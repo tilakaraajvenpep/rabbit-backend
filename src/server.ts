@@ -8,9 +8,9 @@ import { createServer } from 'http';
 import 'dotenv/config';
 
 /* -----------------------
-   PORT (FIXED FOR TYPESCRIPT + RENDER)
+   PORT (SAFE FOR RENDER + TS)
 ------------------------ */
-const PORT: number = Number(process.env.PORT) || 5000;
+const PORT = Number(process.env.PORT || 5000);
 
 /* -----------------------
    CREATE SERVER
@@ -47,9 +47,11 @@ const startServer = async () => {
     }
 
     /* -----------------------
-       START HTTP SERVER (RENDER SAFE)
+       START HTTP SERVER (FIXED OVERLOAD ISSUE)
     ------------------------ */
-    httpServer.listen(PORT, '0.0.0.0', () => {
+
+    // IMPORTANT: Avoid (port, host, callback) overload in TS builds
+    httpServer.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`Health check: /health`);
     });
