@@ -31,23 +31,41 @@ initEmail();
 
 const startServer = async () => {
   try {
-    // Redis connection (safe mode)
-    try {
-      await connectRedis();
-      logger.info('Redis connected successfully');
-    } catch (err) {
-      logger.warn('Redis connection failed, continuing without Redis');
+    /* -----------------------
+       REDIS (SAFE MODE)
+    ------------------------ */
+    if (process.env.REDIS_ENABLED === 'true') {
+      try {
+        await connectRedis();
+        logger.info('Redis connected successfully');
+      } catch (err) {
+        logger.warn('Redis connection failed, continuing without Redis');
+      }
+    } else {
+      logger.warn('Redis disabled via environment config');
     }
 
+    /* -----------------------
+       START HTTP SERVER
+    ------------------------ */
     httpServer.listen(PORT, () => {
       logger.info(`🚀 Server running on http://localhost:${PORT}`);
     });
 
-    // Graceful shutdown logs
+    /* -----------------------
+       GRACEFUL SHUTDOWN
+    ------------------------ */
     process.on('SIGTERM', () => {
       logger.info('SIGTERM received. Shutting down gracefully...');
       httpServer.close(() => {
         logger.info('Process terminated');
+      });
+    });
+
+    process.on('SIGINT', () => {
+      logger.info('SIGINT received. Closing server...');
+      httpServer.close(() => {
+        logger.info('Server closed');
       });
     });
 
