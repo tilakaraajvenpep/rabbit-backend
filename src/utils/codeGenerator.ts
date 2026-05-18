@@ -1,4 +1,4 @@
-import redis from '../cache/redis.js';
+import { redis } from '../cache/redis.js';
 
 export const generateCode = async (prefix: string, tenantId: number) => {
   const key = `seq:${prefix}:${tenantId}`;

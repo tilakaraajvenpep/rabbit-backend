@@ -3,7 +3,7 @@ import { users } from '../../db/schema/index.js';
 import { and, eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import redis from '../../cache/redis.js';
+import { redis } from '../../cache/redis.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';

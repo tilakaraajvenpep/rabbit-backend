@@ -1,5 +1,5 @@
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, unique, index } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants';
+import { tenants } from './tenants.js';
 
 export const users = pgTable('users', {
   userId: serial('user_id').primaryKey(),

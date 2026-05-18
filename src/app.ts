@@ -13,7 +13,7 @@ import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import userRoutes from './modules/user/user.routes.js';
 import { db } from './db/index.js';
-import redis from './cache/redis.js';
+import { redis } from './cache/redis.js';
 import { sql } from 'drizzle-orm';
 
 const app = express();

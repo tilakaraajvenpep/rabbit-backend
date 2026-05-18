@@ -11,7 +11,7 @@ export const initJobs = () => {
     logger.info('Running timeline alert job...');
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
       
       const delayedProjects = await db.query.projects.findMany({
         where: and(

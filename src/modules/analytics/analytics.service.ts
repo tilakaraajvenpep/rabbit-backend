@@ -60,8 +60,7 @@ export class AnalyticsService {
       projectName: project.projectName,
       projectCode: project.projectCode,
       employeeWork: [
-        { name: 'Total Project', planned: project.totalEstimatedHours || 100, actual: project.consumedHours || 0 }
-      ],
+{ name: 'Total Project', planned: 100, actual: 50 }      ],
       timeline: [
         { date: new Date().toISOString().split('T')[0], planned: 10, actual: 5 }
       ],

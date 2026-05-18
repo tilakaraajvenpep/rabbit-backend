@@ -1,19 +1,20 @@
 import { createClient } from 'redis';
 
-let redis: any = null;
+export const redis = createClient({
+  url: process.env.REDIS_URL
+});
 
-try {
-  redis = createClient({
-    url: process.env.REDIS_URL
-  });
+redis.on('error', (err: Error) => {
+  console.log('Redis Error:', err.message);
+});
 
-  redis.on('error', (err: any) => {
-    console.log('Redis Error:', err.message);
-  });
-
-  redis.connect();
-} catch (err) {
-  console.log('Redis disabled');
+export async function connectRedis() {
+  try {
+    if (!redis.isOpen) {
+      await redis.connect();
+      console.log('✅ Redis Connected');
+    }
+  } catch (err) {
+    console.log('⚠️ Redis disabled');
+  }
 }
-
-export { redis };

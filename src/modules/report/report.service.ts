@@ -1,7 +1,7 @@
 import { db } from '../../db/index.js';
 import { dailyReports, dailyReportItems, tickets, auditLogs, users } from '../../db/schema/index.js';
 import { eq, and, sql, gte, lte } from 'drizzle-orm';
-import redis from '../../cache/redis.js';
+import { redis } from '../../cache/redis.js';
 import { validateTotalHours } from '../../utils/hoursValidator.js';
 import { emitToRoom } from '../../socket/socket.js';
 

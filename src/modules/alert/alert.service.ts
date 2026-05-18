@@ -1,7 +1,7 @@
 import { db } from '../../db/index.js';
 import { alerts, projects, tickets } from '../../db/schema/index.js';
 import { eq, and, sql } from 'drizzle-orm';
-import redis from '../../cache/redis.js';
+import { redis } from '../../cache/redis.js';
 import { emitToRoom } from '../../socket/socket.js';
 
 export class AlertService {

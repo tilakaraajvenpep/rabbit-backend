@@ -1,7 +1,7 @@
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, index, decimal, date } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants';
-import { users } from './users';
-import { tickets } from './tickets';
+import { tenants } from './tenants.js';
+import { users } from './users.js';
+import { tickets } from './tickets.js';
 
 export const dailyReports = pgTable('daily_reports', {
   reportId: serial('report_id').primaryKey(),

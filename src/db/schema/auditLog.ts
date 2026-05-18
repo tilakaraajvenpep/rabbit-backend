@@ -1,6 +1,6 @@
 import { pgTable, serial, varchar, text, integer, timestamp, index, jsonb } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants';
-import { users } from './users';
+import { tenants } from './tenants.js';
+import { users } from './users.js';
 
 export const auditLogs = pgTable('audit_logs', {
   logId: serial('log_id').primaryKey(),

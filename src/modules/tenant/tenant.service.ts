@@ -1,7 +1,7 @@
 import { db } from '../../db/index.js';
 import { tenants } from '../../db/schema/index.js';
 import { eq, and } from 'drizzle-orm';
-import redis from '../../cache/redis.js';
+import { redis } from '../../cache/redis.js';
 
 export class TenantService {
   static async resolveTenant(tenantCode: string) {

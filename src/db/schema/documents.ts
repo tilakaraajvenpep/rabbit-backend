@@ -1,6 +1,6 @@
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, index } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants';
-import { projects } from './projects';
+import { tenants } from './tenants.js';
+import { projects } from './projects.js';
 
 export const scopeDocuments = pgTable('scope_documents', {
   documentId: serial('document_id').primaryKey(),

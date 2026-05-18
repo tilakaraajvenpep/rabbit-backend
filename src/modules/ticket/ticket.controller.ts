@@ -28,7 +28,7 @@ export const createTicket = async (req: Request, res: Response, next: NextFuncti
           tenantId: user.tenantId,
           projectName,
           projectCode,
-          clientName: 'Internal',
+          client: 'Internal',
           status: 'Adhoc',
           createdByUserId: user.userId
         }).returning();
