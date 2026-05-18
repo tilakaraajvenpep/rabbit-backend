@@ -15,3 +15,8 @@ export const updateTicketStatusSchema = z.object({
 export const assignTicketSchema = z.object({
   assignedToUserId: z.number(),
 });
+
+export const updateTicketProgressSchema = z.object({
+  progressState: z.string(),
+  statusNotes: z.string().optional(),
+});

@@ -13,6 +13,7 @@ router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager']), ticketCo
 
 // When used under /tickets/:id
 router.put('/:id/status', ticketController.updateTicketStatus);
+router.put('/:id/progress', ticketController.updateTicketProgress);
 router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager']), ticketController.assignTicket);
 router.delete('/:id', checkRole(['TeamLead']), ticketController.deleteTicket);
 

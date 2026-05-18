@@ -50,9 +50,9 @@ export const updateProjectStatus = async (req: Request, res: Response, next: Nex
   try {
     const user = (req as any).user;
     const id = parseInt(req.params.id);
-    const { status } = updateProjectStatusSchema.parse(req.body);
+    const { status, assignedTeamLeadId } = updateProjectStatusSchema.parse(req.body);
     
-    const project = await ProjectService.updateProjectStatus(id, user.tenantId, user.userId, status);
+    const project = await ProjectService.updateProjectStatus(id, user.tenantId, user.userId, status, assignedTeamLeadId);
     return success(res, project, 'Project status updated');
   } catch (err) {
     next(err);

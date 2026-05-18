@@ -14,6 +14,8 @@ export const tickets = pgTable('tickets', {
   priority: varchar('priority', { length: 50 }).default('Medium'),
   assignedToUserId: integer('assigned_to_user_id').references(() => users.userId),
   estimatedHours: decimal('estimated_hours', { precision: 10, scale: 2 }).default('0.00'),
+  progressState: varchar('progress_state', { length: 50 }).default('InProgress'),
+  statusNotes: text('status_notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),

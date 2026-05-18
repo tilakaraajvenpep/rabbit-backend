@@ -113,4 +113,22 @@ router.put('/:id/role', authenticate, async (req: any, res, next) => {
   }
 });
 
+router.delete('/:id', authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tenantId } = req.user;
+
+    const [user] = await db.select().from(users).where(and(eq(users.userId, parseInt(id)), eq(users.tenantId, tenantId)));
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    await db.update(users)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(users.userId, parseInt(id)));
+
+    return success(res, null, 'User deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

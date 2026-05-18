@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { TicketService } from './ticket.service.js';
 import { success, error } from '../../utils/response.js';
-import { createTicketSchema, updateTicketStatusSchema, assignTicketSchema } from './ticket.schema.js';
+import { createTicketSchema, updateTicketStatusSchema, assignTicketSchema, updateTicketProgressSchema } from './ticket.schema.js';
 
 export const createTicket = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -77,6 +77,19 @@ export const updateTicketStatus = async (req: Request, res: Response, next: Next
 
     const ticket = await TicketService.updateTicketStatus(id, user.tenantId, user.userId, status);
     return success(res, ticket, 'Ticket status updated');
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateTicketProgress = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const id = parseInt(req.params.id);
+    const { progressState, statusNotes } = updateTicketProgressSchema.parse(req.body);
+
+    const ticket = await TicketService.updateTicketProgress(id, user.tenantId, user.userId, progressState, statusNotes);
+    return success(res, ticket, 'Ticket progress updated');
   } catch (err) {
     next(err);
   }

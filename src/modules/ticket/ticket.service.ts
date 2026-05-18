@@ -123,6 +123,34 @@ export class TicketService {
     return ticket;
   }
 
+  static async updateTicketProgress(ticketId: number, tenantId: number, userId: number, progressState: string, statusNotes?: string) {
+    const oldTicket = await db.query.tickets.findFirst({
+      where: and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)),
+    });
+
+    if (!oldTicket) throw new Error('Ticket not found');
+
+    const [ticket] = await db.update(tickets)
+      .set({ progressState, statusNotes, updatedAt: new Date() })
+      .where(and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)))
+      .returning();
+
+    // Audit Log
+    await db.insert(auditLogs).values({
+      tenantId,
+      userId,
+      action: 'UPDATE_TICKET_PROGRESS',
+      entityType: 'ticket',
+      entityId: ticket.ticketId,
+      oldData: oldTicket,
+      newData: ticket,
+    });
+
+    emitToRoom(`project:${ticket.projectId}`, 'ticket-progress-updated', ticket);
+
+    return ticket;
+  }
+
   static async assignTicket(ticketId: number, tenantId: number, userId: number, assignedToUserId: number) {
     const [ticket] = await db.update(tickets)
       .set({ assignedToUserId, updatedAt: new Date() })

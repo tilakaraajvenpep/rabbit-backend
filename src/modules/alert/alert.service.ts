@@ -45,8 +45,14 @@ export class AlertService {
   }
 
   static async createAlert({ tenantId, projectId, type, severity, message }: any) {
+    let resolvedProjectId = typeof projectId === 'string' ? parseInt(projectId) : Number(projectId);
+    if (!resolvedProjectId || isNaN(resolvedProjectId)) {
+      const [firstProject] = await db.select().from(projects).where(eq(projects.tenantId, tenantId)).limit(1);
+      resolvedProjectId = firstProject ? firstProject.projectId : 1;
+    }
+
     // Dedup check via Redis
-    const dedupKey = `alert:${tenantId}:${projectId}:${type}:${severity}`;
+    const dedupKey = `alert:${tenantId}:${resolvedProjectId}:${type}:${severity}`;
     if (redis.isOpen) {
       const exists = await redis.get(dedupKey);
       if (exists) return null;
@@ -54,7 +60,7 @@ export class AlertService {
 
     const [alert] = await db.insert(alerts).values({
       tenantId,
-      projectId,
+      projectId: resolvedProjectId,
       type,
       severity,
       message,

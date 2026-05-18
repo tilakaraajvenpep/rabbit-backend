@@ -15,7 +15,7 @@ export class ProjectService {
       projectCode,
       tenantId,
       createdByUserId: userId,
-      status: 'Draft',
+      status: 'PendingReview',
     }).returning();
 
     // Audit Log
@@ -55,10 +55,21 @@ export class ProjectService {
 
     const whereClause = roleFilter ? and(baseWhere, roleFilter) : baseWhere;
 
-    return await db.query.projects.findMany({
-      where: whereClause,
-      orderBy: (projects, { desc }) => [desc(projects.createdAt)],
-    });
+    const { users } = await import('../../db/schema/index.js');
+    const results = await db.select({
+      project: projects,
+      teamLeadName: users.fullName
+    })
+    .from(projects)
+    .leftJoin(users, eq(projects.assignedTeamLeadId, users.userId))
+    .where(whereClause)
+    .orderBy(projects.createdAt);
+
+    // Drizzle reverse sort manually if desc is needed, or just use sql`... DESC`
+    return results.reverse().map(r => ({
+      ...r.project,
+      teamLead: r.teamLeadName
+    }));
   }
 
   static async getProjectById(projectId: number, tenantId: number) {
@@ -67,11 +78,16 @@ export class ProjectService {
     });
   }
 
-  static async updateProjectStatus(projectId: number, tenantId: number, userId: number, status: string) {
+  static async updateProjectStatus(projectId: number, tenantId: number, userId: number, status: string, assignedTeamLeadId?: number) {
     const oldProject = await this.getProjectById(projectId, tenantId);
     
+    const updateData: any = { status, updatedAt: new Date() };
+    if (assignedTeamLeadId !== undefined) {
+      updateData.assignedTeamLeadId = assignedTeamLeadId;
+    }
+
     const [project] = await db.update(projects)
-      .set({ status, updatedAt: new Date() })
+      .set(updateData)
       .where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)))
       .returning();
 

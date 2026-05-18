@@ -10,4 +10,5 @@ export const createProjectSchema = z.object({
 
 export const updateProjectStatusSchema = z.object({
   status: z.enum(['Draft', 'PendingReview', 'ReturnedForRevision', 'Approved', 'InProgress', 'Completed', 'OnHold']),
+  assignedTeamLeadId: z.number().int().positive().optional(),
 });
