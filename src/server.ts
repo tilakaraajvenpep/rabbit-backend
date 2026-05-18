@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 const httpServer = createServer(app);
 
 /* -----------------------
-   INIT SERVICES
+   INIT SERVICES (NON-BLOCKING)
 ------------------------ */
 
 // Socket setup
@@ -32,42 +32,39 @@ initEmail();
 const startServer = async () => {
   try {
     /* -----------------------
-       REDIS (SAFE MODE)
+       REDIS (SAFE - NON BLOCKING)
     ------------------------ */
     if (process.env.REDIS_ENABLED === 'true') {
-      try {
-        await connectRedis();
-        logger.info('Redis connected successfully');
-      } catch (err) {
-        logger.warn('Redis connection failed, continuing without Redis');
-      }
+      connectRedis()
+        .then(() => logger.info('Redis connected successfully'))
+        .catch(() => logger.warn('Redis unavailable, continuing without Redis'));
     } else {
       logger.warn('Redis disabled via environment config');
     }
 
     /* -----------------------
-       START HTTP SERVER
+       START SERVER (CRITICAL FOR RENDER)
     ------------------------ */
-    httpServer.listen(PORT, () => {
-      logger.info(`🚀 Server running on http://localhost:${PORT}`);
+
+    httpServer.listen(PORT, '0.0.0.0', () => {
+      logger.info(`🚀 Server running on port ${PORT}`);
+      logger.info(`Health check: /health`);
     });
 
     /* -----------------------
        GRACEFUL SHUTDOWN
     ------------------------ */
-    process.on('SIGTERM', () => {
-      logger.info('SIGTERM received. Shutting down gracefully...');
-      httpServer.close(() => {
-        logger.info('Process terminated');
-      });
-    });
 
-    process.on('SIGINT', () => {
-      logger.info('SIGINT received. Closing server...');
+    const shutdown = (signal: string) => {
+      logger.info(`${signal} received. Shutting down gracefully...`);
       httpServer.close(() => {
         logger.info('Server closed');
+        process.exit(0);
       });
-    });
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
   } catch (error) {
     logger.error('Failed to start server:', error);
