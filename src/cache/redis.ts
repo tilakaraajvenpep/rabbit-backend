@@ -1,18 +1,19 @@
 import { createClient } from 'redis';
-import logger from '../utils/logger.js';
-import 'dotenv/config';
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-});
+let redis: any = null;
 
-redisClient.on('error', (err) => logger.error('Redis Client Error', err));
-redisClient.on('connect', () => logger.info('Redis Client Connected'));
+try {
+  redis = createClient({
+    url: process.env.REDIS_URL
+  });
 
-export const connectRedis = async () => {
-  if (!redisClient.isOpen) {
-    await redisClient.connect();
-  }
-};
+  redis.on('error', (err: any) => {
+    console.log('Redis Error:', err.message);
+  });
 
-export default redisClient;
+  redis.connect();
+} catch (err) {
+  console.log('Redis disabled');
+}
+
+export { redis };
