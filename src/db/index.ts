@@ -4,19 +4,26 @@ import * as schema from './schema/index.js';
 import 'dotenv/config';
 
 if (!process.env.DATABASE_URL) {
-  throw new Error('❌ DATABASE_URL is not defined in .env');
+  throw new Error('❌ DATABASE_URL is not defined');
 }
 
-const connectionString = process.env.DATABASE_URL;
+const isProduction = process.env.NODE_ENV === 'production';
 
-export const client = postgres(connectionString, {
+export const client = postgres(process.env.DATABASE_URL, {
   max: 20,
   idle_timeout: 20,
-  connect_timeout: 10
+  connect_timeout: 10,
+
+  /* -----------------------
+     IMPORTANT FIX FOR RENDER / CLOUD DB
+  ------------------------ */
+  ssl: isProduction
+    ? { rejectUnauthorized: false }
+    : false,
 });
 
 export const db = drizzle(client, {
-  schema
+  schema,
 });
 
 export async function connectDB() {
