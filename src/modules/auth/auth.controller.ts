@@ -6,11 +6,37 @@ import { loginSchema, refreshSchema } from './auth.schema.js';
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, tenantCode } = loginSchema.parse(req.body);
-    
+    if (!req.body) {
+      return res.status(400).json({ message: 'Request body is missing' });
+    }
+
+    const parsed = loginSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { email, password, tenantCode } = parsed.data;
+
+    if (!tenantCode) {
+      return res.status(400).json({ message: 'tenantCode is required' });
+    }
+
     const tenant = await TenantService.resolveTenant(tenantCode);
-    const result = await AuthService.login({ email, password, tenantId: tenant.tenantId });
-    
+
+    if (!tenant || !tenant.tenantId) {
+      return res.status(400).json({ message: 'Invalid tenant code' });
+    }
+
+    const result = await AuthService.login({
+      email,
+      password,
+      tenantId: tenant.tenantId,
+    });
+
     return success(res, result, 'Login successful');
   } catch (err) {
     next(err);
@@ -19,8 +45,23 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
 export const refresh = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { refreshToken } = refreshSchema.parse(req.body);
-    const result = await AuthService.refresh({ refreshToken });
+    if (!req.body) {
+      return res.status(400).json({ message: 'Request body is missing' });
+    }
+
+    const parsed = refreshSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const result = await AuthService.refresh({
+      refreshToken: parsed.data.refreshToken,
+    });
+
     return success(res, result, 'Token refreshed');
   } catch (err) {
     next(err);
@@ -29,8 +70,14 @@ export const refresh = async (req: Request, res: Response, next: NextFunction) =
 
 export const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user.userId;
-    await AuthService.logout(userId);
+    const user = (req as any).user;
+
+    if (!user?.userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    await AuthService.logout(user.userId);
+
     return success(res, null, 'Logged out');
   } catch (err) {
     next(err);
@@ -40,6 +87,11 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
 export const me = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     return success(res, user, 'Current user profile');
   } catch (err) {
     next(err);
