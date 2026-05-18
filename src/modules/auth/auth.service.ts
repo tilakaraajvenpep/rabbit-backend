@@ -5,12 +5,23 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { redis } from '../../cache/redis.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
+/* -----------------------
+   ENV SAFETY (NO FALLBACKS IN PROD)
+------------------------ */
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+  throw new Error('JWT secrets are missing in environment variables');
+}
+
 export class AuthService {
+
+  /* -----------------------
+     LOGIN
+  ------------------------ */
   static async login({ email, password, tenantId }: any) {
     const user = await db.query.users.findFirst({
       where: and(
@@ -27,7 +38,14 @@ export class AuthService {
       throw err;
     }
 
+    if (!user.passwordHash) {
+      const err = new Error('User password not set');
+      (err as any).status = 500;
+      throw err;
+    }
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
+
     if (!isValid) {
       const err = new Error('Invalid credentials');
       (err as any).status = 401;
@@ -46,38 +64,45 @@ export class AuthService {
       { expiresIn: JWT_REFRESH_EXPIRES_IN as any }
     );
 
-    // Store refresh token in Redis (if open)
+    /* -----------------------
+       SAFE REDIS STORAGE
+    ------------------------ */
     try {
-      if (redis.isOpen) {
-        await redis.set(`refresh:${user.userId}`, refreshToken, {
-          EX: 7 * 24 * 60 * 60, // 7 days
-        });
-      }
+      await redis.connect().catch(() => {});
+      await redis.set(`refresh:${user.userId}`, refreshToken, {
+        EX: 7 * 24 * 60 * 60,
+      });
     } catch (err) {
-      console.error('Redis error during login:', err);
-      // Non-blocking, continue login
+      console.warn('Redis not available, skipping refresh token storage');
     }
 
     const { passwordHash, ...userWithoutPassword } = user;
-    return { accessToken, refreshToken, user: userWithoutPassword };
+
+    return {
+      accessToken,
+      refreshToken,
+      user: userWithoutPassword,
+    };
   }
 
+  /* -----------------------
+     REFRESH TOKEN
+  ------------------------ */
   static async refresh({ refreshToken }: { refreshToken: string }) {
     try {
       const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any;
       const userId = decoded.userId;
 
-      // Check Redis
-      if (redis.isOpen) {
-        const storedToken = await redis.get(`refresh:${userId}`);
-        if (storedToken !== refreshToken) throw new Error('Invalid refresh token');
-      }
-
       const user = await db.query.users.findFirst({
-        where: and(eq(users.userId, userId), eq(users.isActive, true)),
+        where: and(
+          eq(users.userId, userId),
+          eq(users.isActive, true)
+        ),
       });
 
-      if (!user) throw new Error('User not found');
+      if (!user) {
+        throw new Error('User not found');
+      }
 
       const accessToken = jwt.sign(
         { userId: user.userId, tenantId: user.tenantId, role: user.role },
@@ -91,22 +116,32 @@ export class AuthService {
         { expiresIn: JWT_REFRESH_EXPIRES_IN as any }
       );
 
-      if (redis.isOpen) {
+      try {
         await redis.set(`refresh:${user.userId}`, newRefreshToken, {
           EX: 7 * 24 * 60 * 60,
         });
-      }
+      } catch {}
 
-      return { accessToken, refreshToken: newRefreshToken };
-    } catch (err) {
-      throw new Error('Invalid refresh token');
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+      };
+
+    } catch {
+      const err = new Error('Invalid refresh token');
+      (err as any).status = 401;
+      throw err;
     }
   }
 
+  /* -----------------------
+     LOGOUT
+  ------------------------ */
   static async logout(userId: number) {
-    if (redis.isOpen) {
+    try {
       await redis.del(`refresh:${userId}`);
-    }
+    } catch {}
+
     return { success: true };
   }
 }
