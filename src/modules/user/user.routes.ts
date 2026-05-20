@@ -121,11 +121,51 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
     const [user] = await db.select().from(users).where(and(eq(users.userId, parseInt(id)), eq(users.tenantId, tenantId)));
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    await db.update(users)
-      .set({ isDeleted: true, updatedAt: new Date() })
+    await db.delete(users)
       .where(eq(users.userId, parseInt(id)));
 
     return success(res, null, 'User deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/me/profile', authenticate, async (req: any, res, next) => {
+  try {
+    const { userId } = req.user;
+    const { fullName, email } = req.body;
+
+    const [updatedUser] = await db.update(users)
+      .set({ fullName, email, updatedAt: new Date() })
+      .where(eq(users.userId, userId))
+      .returning();
+
+    const { passwordHash, ...userWithoutPassword } = updatedUser as any;
+    return success(res, userWithoutPassword, 'Profile updated successfully');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/me/password', authenticate, async (req: any, res, next) => {
+  try {
+    const { userId } = req.user;
+    const { currentPassword, newPassword } = req.body;
+
+    const [user] = await db.select().from(users).where(eq(users.userId, userId));
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      return res.status(400).json({ success: false, message: 'Invalid current password' });
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await db.update(users)
+      .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
+      .where(eq(users.userId, userId));
+
+    return success(res, null, 'Password updated successfully');
   } catch (err) {
     next(err);
   }

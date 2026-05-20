@@ -33,13 +33,13 @@ export class AuthService {
     });
 
     if (!user) {
-      const err = new Error('Invalid credentials');
+      const err = new Error('Email not registered in this workspace');
       (err as any).status = 401;
       throw err;
     }
 
     if (!user.passwordHash) {
-      const err = new Error('User password not set');
+      const err = new Error('User password not set. Contact your administrator.');
       (err as any).status = 500;
       throw err;
     }
@@ -47,7 +47,7 @@ export class AuthService {
     const isValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValid) {
-      const err = new Error('Invalid credentials');
+      const err = new Error('Incorrect password. Please try again.');
       (err as any).status = 401;
       throw err;
     }
