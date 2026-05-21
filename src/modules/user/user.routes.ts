@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema/index.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { success } from '../../utils/response.js';
 
@@ -146,13 +146,41 @@ router.put('/:id/role', authenticate, async (req: any, res, next) => {
 router.delete('/:id', authenticate, async (req: any, res, next) => {
   try {
     const { id } = req.params;
-    const { tenantId } = req.user;
+    const { tenantId, role: userRole } = req.user;
+    const userIdInt = parseInt(id);
 
-    const [user] = await db.select().from(users).where(and(eq(users.userId, parseInt(id)), eq(users.tenantId, tenantId)));
+    // Only TenantAdmin or SuperAdmin can delete users
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const [user] = await db.select().from(users).where(and(eq(users.userId, userIdInt), eq(users.tenantId, tenantId)));
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    await db.delete(users)
-      .where(eq(users.userId, parseInt(id)));
+    // Cascade delete user associations to avoid foreign key violations:
+    const { dailyReports, dailyReportItems, tickets, projects, auditLogs } = await import('../../db/schema/index.js');
+    
+    // 1. Delete daily report items associated with the user's reports
+    const userReports = await db.select({ reportId: dailyReports.reportId }).from(dailyReports).where(eq(dailyReports.userId, userIdInt));
+    const userReportIds = userReports.map(r => r.reportId);
+    if (userReportIds.length > 0) {
+      await db.delete(dailyReportItems).where(inArray(dailyReportItems.reportId, userReportIds));
+    }
+    // 2. Delete reports
+    await db.delete(dailyReports).where(eq(dailyReports.userId, userIdInt));
+
+    // 3. Clear ticket assignments
+    await db.update(tickets).set({ assignedToUserId: null }).where(eq(tickets.assignedToUserId, userIdInt));
+
+    // 4. Clear project assignments/creations
+    await db.update(projects).set({ assignedTeamLeadId: null }).where(eq(projects.assignedTeamLeadId, userIdInt));
+    await db.update(projects).set({ createdByUserId: null }).where(eq(projects.createdByUserId, userIdInt));
+
+    // 5. Clear audit log references
+    await db.update(auditLogs).set({ userId: null }).where(eq(auditLogs.userId, userIdInt));
+
+    // 6. Hard delete the user
+    await db.delete(users).where(eq(users.userId, userIdInt));
 
     return success(res, null, 'User deleted successfully');
   } catch (err) {

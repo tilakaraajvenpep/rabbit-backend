@@ -36,4 +36,20 @@ export const initJobs = () => {
       logger.error('Timeline alert job failed:', err);
     }
   });
+
+  // Reset Employee allocated hours every Monday at 12:00 AM (0 0 * * 1)
+  cron.schedule('0 0 * * 1', async () => {
+    logger.info('🔄 Running weekly work hours allocation reset...');
+    try {
+      const { users } = await import('../db/schema/index.js');
+      const { eq } = await import('drizzle-orm');
+      await db.update(users)
+        .set({ allocatedHours: '8.50', updatedAt: new Date() })
+        .where(eq(users.role, 'Employee'));
+      logger.info('✅ Weekly work hours allocation reset completed.');
+    } catch (err) {
+      logger.error('❌ Failed to run weekly work hours allocation reset:', err);
+    }
+  });
 };
+
