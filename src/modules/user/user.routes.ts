@@ -4,6 +4,8 @@ import { users } from '../../db/schema/index.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { success } from '../../utils/response.js';
+import bcrypt from 'bcryptjs';
+
 
 const router = Router();
 
@@ -34,6 +36,49 @@ router.get('/', authenticate, async (req: any, res) => {
     .where(whereClause);
 
   return success(res, allUsers);
+});
+
+// POST /users — create a new user within the admin's tenant
+router.post('/', authenticate, async (req: any, res, next) => {
+  try {
+    const { tenantId, role: userRole } = req.user;
+
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin can create users' });
+    }
+
+    const { fullName, email, password, role } = req.body;
+
+    if (!fullName || !email || !password || !role) {
+      return res.status(400).json({ success: false, message: 'fullName, email, password and role are required' });
+    }
+
+    // Check email uniqueness within tenant
+    const [existing] = await db.select().from(users).where(and(eq(users.email, email), eq(users.tenantId, tenantId)));
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'A user with this email already exists in this tenant' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const [newUser] = await db.insert(users).values({
+      tenantId,
+      fullName,
+      email,
+      passwordHash,
+      role,
+      isActive: true,
+      isDeleted: false,
+      allocatedHours: '8.50',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+
+    const { passwordHash: _, ...safeUser } = newUser as any;
+    return success(res, safeUser, 'User created successfully');
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => {
