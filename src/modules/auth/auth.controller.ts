@@ -86,11 +86,25 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
 
 export const me = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
+    const jwtUser = (req as any).user;
 
-    if (!user) {
+    if (!jwtUser) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
+
+    const { db } = await import('../../db/index.js');
+    const { users } = await import('../../db/schema/index.js');
+    const { eq } = await import('drizzle-orm');
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.userId, jwtUser.userId),
+      columns: {
+        userId: true, fullName: true, email: true, role: true,
+        isActive: true, allocatedHours: true, tenantId: true, createdAt: true,
+      }
+    });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     return success(res, user, 'Current user profile');
   } catch (err) {

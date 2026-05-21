@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, boolean, timestamp, unique, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, boolean, timestamp, unique, index, decimal } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants.js';
 
 export const users = pgTable('users', {
@@ -9,6 +9,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   role: varchar('role', { length: 50 }).notNull(),
   isActive: boolean('is_active').default(true),
+  allocatedHours: decimal('allocated_hours', { precision: 6, scale: 2 }).default('8.50'),
   lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

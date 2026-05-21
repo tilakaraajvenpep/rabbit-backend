@@ -27,12 +27,42 @@ router.get('/', authenticate, async (req: any, res) => {
     name: users.fullName,
     email: users.email,
     role: users.role,
-    isActive: users.isActive
+    isActive: users.isActive,
+    allocatedHours: users.allocatedHours
   })
     .from(users)
     .where(whereClause);
 
   return success(res, allUsers);
+});
+
+router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
+    const { allocatedHours } = req.body;
+    const { tenantId, role: userRole } = req.user;
+
+    if (userRole !== 'TenantAdmin') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin can set allocated hours' });
+    }
+
+    if (allocatedHours === undefined || allocatedHours === null || Number(allocatedHours) < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid allocatedHours value' });
+    }
+
+    const [updatedUser] = await db.update(users)
+      .set({ allocatedHours: String(allocatedHours), updatedAt: new Date() })
+      .where(and(eq(users.userId, parseInt(id)), eq(users.tenantId, tenantId)))
+      .returning();
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found in this tenant' });
+    }
+
+    return success(res, { id: updatedUser.userId, allocatedHours: updatedUser.allocatedHours }, 'Allocated hours updated');
+  } catch (err) {
+    next(err);
+  }
 });
 
 import bcrypt from 'bcryptjs';
