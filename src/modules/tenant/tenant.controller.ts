@@ -66,3 +66,13 @@ export const updateStatus = async (req: Request, res: Response, next: NextFuncti
     next(err);
   }
 };
+
+export const getMy = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const data = await TenantService.getTenantWithStats(user.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};

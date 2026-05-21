@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
-import { tenants } from '../../db/schema/index.js';
-import { eq, and } from 'drizzle-orm';
+import { tenants, users, projects } from '../../db/schema/index.js';
+import { eq, and, sql } from 'drizzle-orm';
 import { redis } from '../../cache/redis.js';
 
 export class TenantService {
@@ -73,5 +73,33 @@ export class TenantService {
       .where(and(eq(tenants.tenantId, id), eq(tenants.isDeleted, false)))
       .returning();
     return tenant;
+  }
+
+  static async getTenantWithStats(tenantId: number) {
+    const tenant = await db.query.tenants.findFirst({
+      where: and(eq(tenants.tenantId, tenantId), eq(tenants.isDeleted, false)),
+    });
+
+    if (!tenant) {
+      const err = new Error('Tenant not found');
+      (err as any).status = 404;
+      throw err;
+    }
+
+    const [userCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(users)
+      .where(and(eq(users.tenantId, tenantId), eq(users.isDeleted, false)));
+
+    const [projectCount] = await db
+      .select({ count: sql<number>`cast(count(*) as int)` })
+      .from(projects)
+      .where(and(eq(projects.tenantId, tenantId), eq(projects.isDeleted, false)));
+
+    return {
+      ...tenant,
+      activeUsers: userCount.count,
+      activeProjects: projectCount.count,
+    };
   }
 }
