@@ -1,6 +1,10 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema/index.js';
+import { tenants } from './schema/index.js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { seedDB } from '../seed.js';
+import path from 'path';
 import 'dotenv/config';
 
 if (!process.env.DATABASE_URL) {
@@ -30,8 +34,23 @@ export async function connectDB() {
   try {
     await client`SELECT 1`;
     console.log('✅ PostgreSQL Connected');
+
+    // Run programmatic migrations
+    console.log('🔄 Running database migrations...');
+    await migrate(db, { migrationsFolder: path.join(process.cwd(), 'drizzle') });
+    console.log('✅ Database migrations applied successfully!');
+
+    // Check if auto-seeding is needed
+    const existingTenants = await db.select().from(tenants).limit(1);
+    if (existingTenants.length === 0) {
+      console.log('🌱 Database is empty. Running auto-seeding...');
+      await seedDB();
+      console.log('✅ Auto-seeding completed successfully!');
+    }
   } catch (error) {
-    console.error('❌ Database Connection Failed:', error);
-    process.exit(1);
+    console.error('❌ Database Sync / Connection Failed:', error);
+    if (isProduction) {
+      process.exit(1);
+    }
   }
 }

@@ -1,5 +1,6 @@
 import app from './app.js';
 import logger from './utils/logger.js';
+import { connectDB } from './db/index.js';
 import { connectRedis } from './cache/redis.js';
 import { initSocket } from './socket/socket.js';
 import { initJobs } from './jobs/timelineAlert.job.js';
@@ -35,6 +36,11 @@ initEmail();
 ------------------------ */
 const startServer = async () => {
   try {
+    /* -----------------------
+       DATABASE CONNECTION & MIGRATIONS
+    ------------------------ */
+    await connectDB();
+
     /* -----------------------
        REDIS (SAFE MODE)
     ------------------------ */
