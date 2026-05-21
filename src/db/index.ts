@@ -40,13 +40,10 @@ export async function connectDB() {
     await migrate(db, { migrationsFolder: path.join(process.cwd(), 'drizzle') });
     console.log('✅ Database migrations applied successfully!');
 
-    // Check if auto-seeding is needed
-    const existingTenants = await db.select().from(tenants).limit(1);
-    if (existingTenants.length === 0) {
-      console.log('🌱 Database is empty. Running auto-seeding...');
-      await seedDB();
-      console.log('✅ Auto-seeding completed successfully!');
-    }
+    // Run idempotent database seeding
+    console.log('🌱 Checking & applying database seeding...');
+    await seedDB();
+    console.log('✅ Database seeding verified successfully!');
   } catch (error) {
     console.error('❌ Database Sync / Connection Failed:', error);
     if (isProduction) {
