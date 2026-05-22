@@ -28,10 +28,38 @@ import { tickets } from './db/schema/index.js';
 const app = express();
 
 /* -----------------------
+   CORS — allow Vercel frontend + local dev
+------------------------  */
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  // Vercel deployments (all preview + production URLs)
+  'https://rabbit-frontend-5jrifv58k-tilakaraajvenpeps-projects.vercel.app',
+  /^https:\/\/rabbit-frontend.*\.vercel\.app$/,   // any Vercel preview URL
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    const allowed = allowedOrigins.some((o) =>
+      typeof o === 'string' ? o === origin : o.test(origin)
+    );
+    if (allowed) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin not allowed → ${origin}`));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Code'],
+  credentials: true,
+}));
+
+/* -----------------------
    MIDDLEWARE
 ------------------------ */
 app.use(helmet());
-app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
