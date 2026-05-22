@@ -15,6 +15,8 @@ import alertRoutes from './modules/alert/alert.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import userRoutes from './modules/user/user.routes.js';
+import leaveRoutes from './modules/leave/leave.routes.js';
+
 
 // DB + Redis (optional health check)
 import { db } from './db/index.js';
@@ -95,6 +97,8 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/leaves', leaveRoutes);
+
 
 // Analytics group
 app.use('/api/analytics', analyticsRoutes);
