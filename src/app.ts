@@ -22,6 +22,7 @@ import leaveRoutes from './modules/leave/leave.routes.js';
 import { db } from './db/index.js';
 import { redis } from './cache/redis.js';
 import { sql } from 'drizzle-orm';
+import { tickets } from './db/schema/index.js';
 
 const app = express();
 

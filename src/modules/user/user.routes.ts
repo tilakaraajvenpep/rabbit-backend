@@ -163,7 +163,7 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     // Cascade delete user associations to avoid foreign key violations:
-    const { dailyReports, dailyReportItems, tickets, projects, auditLogs } = await import('../../db/schema/index.js');
+    const { dailyReports, dailyReportItems, tickets, projects, auditLogs, leaves } = await import('../../db/schema/index.js');
     
     // 1. Delete daily report items associated with the user's reports
     const userReports = await db.select({ reportId: dailyReports.reportId }).from(dailyReports).where(eq(dailyReports.userId, userIdInt));
@@ -183,6 +183,9 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
 
     // 5. Clear audit log references
     await db.update(auditLogs).set({ userId: null }).where(eq(auditLogs.userId, userIdInt));
+
+    // 5.5 Delete associated leaves
+    await db.delete(leaves).where(eq(leaves.userId, userIdInt));
 
     // 6. Hard delete the user
     await db.delete(users).where(eq(users.userId, userIdInt));
