@@ -55,6 +55,23 @@ app.get('/health', async (req, res) => {
 });
 
 /* -----------------------
+   DIAGNOSTIC ENDPOINT
+------------------------ */
+app.get('/health/db-columns', async (req, res) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'tickets' 
+      ORDER BY ordinal_position
+    `);
+    res.status(200).json({ columns: result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* -----------------------
    API ROUTES (FIXED)
 ------------------------ */
 
