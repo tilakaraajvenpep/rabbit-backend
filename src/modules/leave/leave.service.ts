@@ -2,6 +2,7 @@ import { db } from '../../db/index.js';
 import { leaves, users, projects, tickets, alerts } from '../../db/schema/index.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { sendEmail } from '../../utils/email.js';
+import { NotificationService } from '../notification/notification.service.js';
 
 export class LeaveService {
   static async applyLeave({ tenantId, userId, fromDate, toDate, leaveDate, type, reason }: any) {
@@ -130,8 +131,15 @@ export class LeaveService {
     for (const pm of pms) {
       try {
         await sendEmail({ to: pm.email, subject: emailSubject, html: emailBody });
+        await NotificationService.createNotification({
+          tenantId,
+          userId: pm.userId,
+          title: `New Leave Request: ${employee.fullName}`,
+          message: `${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
+          type: 'leave'
+        });
       } catch (err) {
-        console.error(`Failed to send email to PM ${pm.email}:`, err);
+        console.error(`Failed to send email/notification to PM ${pm.email}:`, err);
       }
     }
 
@@ -139,8 +147,15 @@ export class LeaveService {
     for (const tl of teamLeads) {
       try {
         await sendEmail({ to: tl.email, subject: emailSubject, html: emailBody });
+        await NotificationService.createNotification({
+          tenantId,
+          userId: tl.userId,
+          title: `New Leave Request: ${employee.fullName}`,
+          message: `${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
+          type: 'leave'
+        });
       } catch (err) {
-        console.error(`Failed to send email to Team Lead ${tl.email}:`, err);
+        console.error(`Failed to send email/notification to Team Lead ${tl.email}:`, err);
       }
     }
 
@@ -235,6 +250,21 @@ export class LeaveService {
       .set({ status, updatedAt: new Date() })
       .where(and(eq(leaves.leaveId, leaveId), eq(leaves.tenantId, tenantId)))
       .returning();
+
+    if (updatedLeave) {
+      try {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: updatedLeave.userId,
+          title: `Leave Request ${status}`,
+          message: `Your leave request for ${updatedLeave.leaveDate} has been ${status.toLowerCase()}.`,
+          type: 'leave'
+        });
+      } catch (notifErr) {
+        console.error('Failed to create leave approval notification:', notifErr);
+      }
+    }
+
     return updatedLeave;
   }
 }

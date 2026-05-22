@@ -16,6 +16,7 @@ import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import userRoutes from './modules/user/user.routes.js';
 import leaveRoutes from './modules/leave/leave.routes.js';
+import notificationRoutes from './modules/notification/notification.routes.js';
 
 
 // DB + Redis (optional health check)
@@ -94,6 +95,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/leaves', leaveRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 
 // Analytics group

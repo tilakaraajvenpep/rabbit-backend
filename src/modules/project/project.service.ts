@@ -1,8 +1,9 @@
 import { db } from '../../db/index.js';
-import { projects, auditLogs } from '../../db/schema/index.js';
+import { projects, auditLogs, users } from '../../db/schema/index.js';
 import { eq, and, or, inArray } from 'drizzle-orm';
 import { generateCode } from '../../utils/codeGenerator.js';
 import { emitToRoom } from '../../socket/socket.js';
+import { NotificationService } from '../notification/notification.service.js';
 
 export class ProjectService {
   static async createProject({ tenantId, userId, data }: any) {
@@ -27,6 +28,28 @@ export class ProjectService {
       entityId: project.projectId,
       newData: project,
     });
+
+    // Notify PMs of new project pending review
+    try {
+      const pms = await db.query.users.findMany({
+        where: and(
+          eq(users.tenantId, tenantId),
+          eq(users.role, 'ProjectManager'),
+          eq(users.isDeleted, false)
+        )
+      });
+      for (const pm of pms) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: pm.userId,
+          title: `New Project Submitted: ${project.projectName}`,
+          message: `Project "${project.projectName}" (${project.projectCode}) is pending review.`,
+          type: 'project'
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to create new project notification:', notifErr);
+    }
 
     return project;
   }
@@ -104,6 +127,32 @@ export class ProjectService {
 
     // Notify
     emitToRoom(`project:${projectId}`, 'project-status-updated', project);
+
+    // Notify Team Lead if assigned
+    try {
+      if (project.assignedTeamLeadId) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: project.assignedTeamLeadId,
+          title: `Project Assigned: ${project.projectName}`,
+          message: `You have been assigned as Team Lead for project "${project.projectName}". Status: ${project.status}.`,
+          type: 'project'
+        });
+      }
+
+      // Notify project creator of status changes
+      if (project.createdByUserId && project.createdByUserId !== userId) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: project.createdByUserId,
+          title: `Project Status Update: ${project.projectName}`,
+          message: `The project "${project.projectName}" status has been updated to "${project.status}".`,
+          type: 'project'
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to create project update notifications:', notifErr);
+    }
 
     return project;
   }

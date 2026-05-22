@@ -3,6 +3,7 @@ import { tickets, auditLogs, projects } from '../../db/schema/index.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { generateCode } from '../../utils/codeGenerator.js';
 import { emitToRoom } from '../../socket/socket.js';
+import { NotificationService } from '../notification/notification.service.js';
 
 export class TicketService {
   static async createTicket({ tenantId, projectId, userId, data }: any) {
@@ -48,6 +49,25 @@ export class TicketService {
     });
 
     emitToRoom(`project:${projectId}`, 'ticket-created', ticket);
+
+    // Notify assigned user
+    if (ticket.assignedToUserId) {
+      try {
+        const projectObj = await db.query.projects.findFirst({
+          where: eq(projects.projectId, projectId)
+        });
+        
+        await NotificationService.createNotification({
+          tenantId,
+          userId: ticket.assignedToUserId,
+          title: `New Ticket Assigned: ${ticket.title} (${ticket.ticketCode})`,
+          message: `You have been assigned to ticket "${ticket.title}" under project "${projectObj?.projectName || 'Default'}".`,
+          type: 'ticket'
+        });
+      } catch (notifErr) {
+        console.error('Failed to create ticket creation assignment notification:', notifErr);
+      }
+    }
 
     return ticket;
   }
@@ -160,6 +180,25 @@ export class TicketService {
       .returning();
 
     emitToRoom(`project:${ticket.projectId}`, 'ticket-assigned', ticket);
+
+    // Notify assigned user
+    if (assignedToUserId) {
+      try {
+        const projectObj = await db.query.projects.findFirst({
+          where: eq(projects.projectId, ticket.projectId)
+        });
+        
+        await NotificationService.createNotification({
+          tenantId,
+          userId: assignedToUserId,
+          title: `Ticket Assigned: ${ticket.title} (${ticket.ticketCode})`,
+          message: `You have been assigned to ticket "${ticket.title}" under project "${projectObj?.projectName || 'Default'}".`,
+          type: 'ticket'
+        });
+      } catch (notifErr) {
+        console.error('Failed to create ticket assignment notification:', notifErr);
+      }
+    }
 
     return ticket;
   }
