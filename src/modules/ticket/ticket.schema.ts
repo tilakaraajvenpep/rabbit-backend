@@ -11,7 +11,7 @@ export const createTicketSchema = z.object({
     return val;
   }),
   estimatedHours: z.number().positive(),
-  dueDate: z.string().datetime({ offset: true }).optional().nullable(),
+  dueDate: z.string().optional().nullable(),
   milestone: z.string().max(200).optional().nullable(),
 });
 
