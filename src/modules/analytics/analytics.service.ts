@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
 import { projects, alerts } from '../../db/schema/index.js';
-import { eq, and, count, not } from 'drizzle-orm';
+import { eq, and, count, not, ne } from 'drizzle-orm';
 
 export class AnalyticsService {
   static async getDashboardSummary(tenantId: number) {
@@ -27,12 +27,13 @@ export class AnalyticsService {
         eq(projects.isDeleted, false)
       ));
     
-    // Unread alerts
+    // Unread alerts (excluding Leave Request Alert)
     const unreadAlertsRes = await db.select({ value: count() })
       .from(alerts)
       .where(and(
         eq(alerts.tenantId, tenantId), 
-        eq(alerts.isAcknowledged, false)
+        eq(alerts.isAcknowledged, false),
+        ne(alerts.type, 'Leave Request Alert')
       ));
 
     return {

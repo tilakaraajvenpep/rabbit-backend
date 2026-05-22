@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
 import { alerts, projects, tickets, users } from '../../db/schema/index.js';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, ne } from 'drizzle-orm';
 import { redis } from '../../cache/redis.js';
 import { emitToRoom } from '../../socket/socket.js';
 import { NotificationService } from '../notification/notification.service.js';
@@ -13,7 +13,11 @@ export class AlertService {
     })
       .from(alerts)
       .leftJoin(projects, eq(alerts.projectId, projects.projectId))
-      .where(and(eq(alerts.tenantId, tenantId), eq(alerts.isDeleted, false)))
+      .where(and(
+        eq(alerts.tenantId, tenantId), 
+        eq(alerts.isDeleted, false),
+        ne(alerts.type, 'Leave Request Alert')
+      ))
       .orderBy(sql`${alerts.createdAt} DESC`);
 
     return results.map(r => ({
