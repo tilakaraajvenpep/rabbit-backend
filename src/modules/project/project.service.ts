@@ -158,22 +158,78 @@ export class ProjectService {
   }
 
   static async deleteProject(projectId: number, tenantId: number, userId: number) {
-    const [project] = await db.update(projects)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)))
-      .returning();
+    const { 
+      projects, 
+      tickets, 
+      dailyReportItems, 
+      costAnalysis, 
+      costPhases, 
+      scopeDocuments, 
+      alerts,
+      auditLogs 
+    } = await import('../../db/schema/index.js');
 
-    await db.insert(auditLogs).values({
-      tenantId,
-      userId,
-      action: 'DELETE_PROJECT',
-      entityType: 'project',
-      entityId: projectId,
-      oldData: project,
+    return await db.transaction(async (tx) => {
+      // 1. Get the project details first for audit logging
+      const project = await tx.query.projects.findFirst({
+        where: and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId))
+      });
+
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      // 2. Find and delete related daily report items (tied to project's tickets)
+      const projectTickets = await tx.select({ ticketId: tickets.ticketId })
+        .from(tickets)
+        .where(eq(tickets.projectId, projectId));
+      
+      const ticketIds = projectTickets.map(t => t.ticketId);
+      if (ticketIds.length > 0) {
+        await tx.delete(dailyReportItems).where(inArray(dailyReportItems.ticketId, ticketIds));
+        // 3. Delete tickets
+        await tx.delete(tickets).where(eq(tickets.projectId, projectId));
+      } else {
+        // Also ensure tickets matching are deleted (even if array is empty, run delete just in case)
+        await tx.delete(tickets).where(eq(tickets.projectId, projectId));
+      }
+
+      // 4. Find and delete related cost phases
+      const projectCostAnalyses = await tx.select({ costAnalysisId: costAnalysis.costAnalysisId })
+        .from(costAnalysis)
+        .where(eq(costAnalysis.projectId, projectId));
+      
+      const costAnalysisIds = projectCostAnalyses.map(ca => ca.costAnalysisId);
+      if (costAnalysisIds.length > 0) {
+        await tx.delete(costPhases).where(inArray(costPhases.costAnalysisId, costAnalysisIds));
+        // 5. Delete cost analyses
+        await tx.delete(costAnalysis).where(eq(costAnalysis.projectId, projectId));
+      } else {
+        await tx.delete(costAnalysis).where(eq(costAnalysis.projectId, projectId));
+      }
+
+      // 6. Delete scope documents
+      await tx.delete(scopeDocuments).where(eq(scopeDocuments.projectId, projectId));
+
+      // 7. Delete alerts
+      await tx.delete(alerts).where(eq(alerts.projectId, projectId));
+
+      // 8. Delete the project itself from the database (HARD DELETE)
+      await tx.delete(projects).where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)));
+
+      // 9. Add an audit log entry
+      await tx.insert(auditLogs).values({
+        tenantId,
+        userId,
+        action: 'DELETE_PROJECT_HARD',
+        entityType: 'project',
+        entityId: projectId,
+        oldData: project,
+      });
+
+      emitToRoom(`project:${projectId}`, 'project-deleted', { projectId });
+
+      return { success: true };
     });
-
-    emitToRoom(`project:${projectId}`, 'project-deleted', { projectId });
-
-    return { success: true };
   }
 }
