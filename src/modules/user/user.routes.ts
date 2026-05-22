@@ -47,14 +47,19 @@ router.post('/', authenticate, async (req: any, res, next) => {
       return res.status(403).json({ success: false, message: 'Only TenantAdmin can create users' });
     }
 
-    const { fullName, email, password, role } = req.body;
+    const { fullName, email, password, role, tenantId: bodyTenantId } = req.body;
 
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ success: false, message: 'fullName, email, password and role are required' });
     }
 
+    // Determine target tenant ID
+    const targetTenantId = (userRole === 'SuperAdmin' && bodyTenantId)
+      ? parseInt(bodyTenantId as string)
+      : tenantId;
+
     // Check email uniqueness within tenant
-    const [existing] = await db.select().from(users).where(and(eq(users.email, email), eq(users.tenantId, tenantId)));
+    const [existing] = await db.select().from(users).where(and(eq(users.email, email), eq(users.tenantId, targetTenantId)));
     if (existing) {
       return res.status(409).json({ success: false, message: 'A user with this email already exists in this tenant' });
     }
@@ -62,7 +67,7 @@ router.post('/', authenticate, async (req: any, res, next) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const [newUser] = await db.insert(users).values({
-      tenantId,
+      tenantId: targetTenantId,
       fullName,
       email,
       passwordHash,
@@ -115,9 +120,14 @@ router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => 
 router.put('/:id/status', authenticate, async (req: any, res, next) => {
   try {
     const { id } = req.params;
-    const { tenantId } = req.user;
+    const { tenantId, role: userRole } = req.user;
 
-    const [user] = await db.select().from(users).where(and(eq(users.userId, parseInt(id)), eq(users.tenantId, tenantId)));
+    let whereClause = eq(users.userId, parseInt(id));
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
+
+    const [user] = await db.select().from(users).where(whereClause);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const [updatedUser] = await db.update(users)
@@ -135,12 +145,19 @@ router.put('/:id/role', authenticate, async (req: any, res, next) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    const { tenantId } = req.user;
+    const { tenantId, role: userRole } = req.user;
+
+    let whereClause = eq(users.userId, parseInt(id));
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
 
     const [updatedUser] = await db.update(users)
       .set({ role, updatedAt: new Date() })
-      .where(and(eq(users.userId, parseInt(id)), eq(users.tenantId, tenantId)))
+      .where(whereClause)
       .returning();
+
+    if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
 
     return success(res, updatedUser, 'Role updated');
   } catch (err) {
@@ -159,7 +176,12 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    const [user] = await db.select().from(users).where(and(eq(users.userId, userIdInt), eq(users.tenantId, tenantId)));
+    let whereClause = eq(users.userId, userIdInt);
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
+
+    const [user] = await db.select().from(users).where(whereClause);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     // Cascade delete user associations to avoid foreign key violations:
