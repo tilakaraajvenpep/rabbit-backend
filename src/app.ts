@@ -74,6 +74,28 @@ app.post('/health/migrate-run', async (req, res) => {
   try {
     await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;`);
     await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
+    
+    // Create notifications table if not exists
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "notifications" (
+        "notification_id" serial PRIMARY KEY,
+        "tenant_id" integer NOT NULL,
+        "user_id" integer NOT NULL,
+        "title" varchar(300) NOT NULL,
+        "message" text NOT NULL,
+        "type" varchar(50) NOT NULL,
+        "is_read" boolean DEFAULT false NOT NULL,
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now(),
+        "is_deleted" boolean DEFAULT false NOT NULL
+      );
+    `);
+    
+    // Create indices
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "notifications_tenant_idx" ON "notifications" ("tenant_id");`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "notifications_user_idx" ON "notifications" ("user_id");`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "notifications_is_read_idx" ON "notifications" ("is_read");`);
+
     res.status(200).json({ success: true, message: "Manual migration executed successfully" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
