@@ -133,6 +133,24 @@ app.post('/health/migrate-run', async (req, res) => {
   }
 });
 
+app.get('/health/test-create-notification', async (req, res) => {
+  try {
+    const { notifications } = await import('./db/schema/index.js');
+    const result = await db.insert(notifications).values({
+      tenantId: 3,
+      userId: 21,
+      title: 'Diagnostic Test',
+      message: 'Testing insertion into notifications table',
+      type: 'leave',
+      isRead: false
+    }).returning();
+    res.status(200).json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+});
+
+
 
 /* -----------------------
    API ROUTES (FIXED)
