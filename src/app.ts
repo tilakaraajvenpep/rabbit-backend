@@ -61,13 +61,18 @@ app.get('/health', async (req, res) => {
 ------------------------ */
 app.get('/health/db-columns', async (req, res) => {
   try {
-    const result = await db.execute(sql`
+    const tables = await db.execute(sql`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    const columns = await db.execute(sql`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'tickets' 
       ORDER BY ordinal_position
     `);
-    res.status(200).json({ columns: result });
+    res.status(200).json({ tables, columns });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
