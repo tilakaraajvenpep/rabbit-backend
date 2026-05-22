@@ -127,10 +127,14 @@ export class LeaveService {
       </div>
     `;
 
-    // Send email to PMs
+    // Send email to PMs (independent of notification — email failure must not block notification)
     for (const pm of pms) {
+      // Email — non-blocking
+      sendEmail({ to: pm.email, subject: emailSubject, html: emailBody })
+        .catch(err => console.error(`Failed to send email to PM ${pm.email}:`, err));
+
+      // In-app notification — always attempt regardless of email
       try {
-        await sendEmail({ to: pm.email, subject: emailSubject, html: emailBody });
         await NotificationService.createNotification({
           tenantId,
           userId: pm.userId,
@@ -138,15 +142,19 @@ export class LeaveService {
           message: `${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
           type: 'leave'
         });
-      } catch (err) {
-        console.error(`Failed to send email/notification to PM ${pm.email}:`, err);
+      } catch (notifErr) {
+        console.error(`Failed to create notification for PM ${pm.email}:`, notifErr);
       }
     }
 
-    // Send email to Team Leads
+    // Send email to Team Leads (independent of notification)
     for (const tl of teamLeads) {
+      // Email — non-blocking
+      sendEmail({ to: tl.email, subject: emailSubject, html: emailBody })
+        .catch(err => console.error(`Failed to send email to TL ${tl.email}:`, err));
+
+      // In-app notification — always attempt regardless of email
       try {
-        await sendEmail({ to: tl.email, subject: emailSubject, html: emailBody });
         await NotificationService.createNotification({
           tenantId,
           userId: tl.userId,
@@ -154,8 +162,8 @@ export class LeaveService {
           message: `${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
           type: 'leave'
         });
-      } catch (err) {
-        console.error(`Failed to send email/notification to Team Lead ${tl.email}:`, err);
+      } catch (notifErr) {
+        console.error(`Failed to create notification for TL ${tl.email}:`, notifErr);
       }
     }
 
