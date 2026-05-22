@@ -1,6 +1,6 @@
 {
-  "id": "9d676637-2631-4a1b-adb4-5925265ced23",
-  "prevId": "3a4ddea5-9ef0-4476-bd53-d1262821b71b",
+  "id": "c539f1c2-3011-4727-899a-f72bbca2a016",
+  "prevId": "9d676637-2631-4a1b-adb4-5925265ced23",
   "version": "6",
   "dialect": "postgresql",
   "tables": {
@@ -799,6 +799,18 @@
           "notNull": false,
           "default": "'0.00'"
         },
+        "due_date": {
+          "name": "due_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "milestone": {
+          "name": "milestone",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "progress_state": {
           "name": "progress_state",
           "type": "varchar(50)",
@@ -1361,6 +1373,129 @@
         "audit_logs_user_id_users_user_id_fk": {
           "name": "audit_logs_user_id_users_user_id_fk",
           "tableFrom": "audit_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.leaves": {
+      "name": "leaves",
+      "schema": "",
+      "columns": {
+        "leave_id": {
+          "name": "leave_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "leave_date": {
+          "name": "leave_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Pending'"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "is_deleted": {
+          "name": "is_deleted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "leaves_tenant_idx": {
+          "name": "leaves_tenant_idx",
+          "columns": [
+            "tenant_id"
+          ],
+          "isUnique": false
+        },
+        "leaves_user_idx": {
+          "name": "leaves_user_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "leaves_date_idx": {
+          "name": "leaves_date_idx",
+          "columns": [
+            "leave_date"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "leaves_tenant_id_tenants_tenant_id_fk": {
+          "name": "leaves_tenant_id_tenants_tenant_id_fk",
+          "tableFrom": "leaves",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "tenant_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "leaves_user_id_users_user_id_fk": {
+          "name": "leaves_user_id_users_user_id_fk",
+          "tableFrom": "leaves",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"

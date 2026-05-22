@@ -26,15 +26,8 @@
     {
       "idx": 3,
       "version": "6",
-      "when": 1779431054200,
-      "tag": "0003_add_leaves_table",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
       "when": 1779431095202,
-      "tag": "0004_add_leaves_table",
+      "tag": "0003_add_leaves_table",
       "breakpoints": true
     }
   ]
