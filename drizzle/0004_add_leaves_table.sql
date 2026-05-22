@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS "leaves" (
 	"is_deleted" boolean DEFAULT false
 );
 --> statement-breakpoint
-ALTER TABLE "tickets" ADD COLUMN "due_date" timestamp;--> statement-breakpoint
-ALTER TABLE "tickets" ADD COLUMN "milestone" varchar(200);--> statement-breakpoint
+ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;--> statement-breakpoint
+ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);--> statement-breakpoint
+
 DO $$ BEGIN
  ALTER TABLE "leaves" ADD CONSTRAINT "leaves_tenant_id_tenants_tenant_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("tenant_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
