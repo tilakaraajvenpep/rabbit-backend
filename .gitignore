@@ -3,3 +3,9 @@ dist
 .env
 uploads
 .vscode
+
+# Scratch / debug scripts
+check_tables.ts
+test_api.ts
+test_notifications.ts
+scratch.ts
