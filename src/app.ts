@@ -61,10 +61,10 @@ app.get('/health', async (req, res) => {
 /* -----------------------
    DIAGNOSTIC ENDPOINT
 ------------------------ */
-app.get('/health/db-columns', async (req, res) => {
+app.get('/health/db-tables', async (req, res) => {
   try {
-    const ticketRows = await db.select().from(tickets).orderBy(sql`${tickets.createdAt} DESC`).limit(10);
-    res.status(200).json({ ticketRows });
+    const tables = await db.execute(sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`);
+    res.status(200).json({ tables });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
