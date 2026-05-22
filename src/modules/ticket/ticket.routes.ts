@@ -15,6 +15,6 @@ router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager']), ticketCo
 router.put('/:id/status', ticketController.updateTicketStatus);
 router.put('/:id/progress', ticketController.updateTicketProgress);
 router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager']), ticketController.assignTicket);
-router.delete('/:id', checkRole(['TeamLead']), ticketController.deleteTicket);
+router.delete('/:id', checkRole(['TeamLead', 'Employee', 'ProjectManager', 'SuperAdmin']), ticketController.deleteTicket);
 
 export default router;

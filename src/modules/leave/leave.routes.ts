@@ -10,6 +10,8 @@ router.use(authenticate);
 // Employee routes
 router.post('/', checkRole(['Employee']), leaveController.applyLeave);
 router.get('/me', checkRole(['Employee']), leaveController.getMyLeaves);
+router.put('/:id', checkRole(['Employee']), leaveController.updateLeave);
+router.delete('/:id', checkRole(['Employee']), leaveController.deleteLeave);
 
 // PM / TL routes
 router.get('/pending', checkRole(['TeamLead', 'ProjectManager']), leaveController.getPendingLeaves);

@@ -275,4 +275,77 @@ export class LeaveService {
 
     return updatedLeave;
   }
+
+  static async updateLeave(leaveId: number, userId: number, tenantId: number, { leaveDate, type, reason }: any) {
+    const existing = await db.query.leaves.findFirst({
+      where: and(
+        eq(leaves.leaveId, leaveId),
+        eq(leaves.userId, userId),
+        eq(leaves.tenantId, tenantId),
+        eq(leaves.isDeleted, false)
+      )
+    });
+
+    if (!existing) {
+      throw new Error('Leave request not found or not owned by you.');
+    }
+
+    if (existing.status !== 'Pending') {
+      throw new Error('You can only edit pending leave requests.');
+    }
+
+    if (leaveDate && leaveDate !== existing.leaveDate) {
+      const conflict = await db.query.leaves.findFirst({
+        where: and(
+          eq(leaves.userId, userId),
+          eq(leaves.leaveDate, leaveDate),
+          eq(leaves.isDeleted, false)
+        )
+      });
+      if (conflict && conflict.leaveId !== leaveId) {
+        throw new Error(`You already have a leave request on ${leaveDate}.`);
+      }
+    }
+
+    const [updated] = await db.update(leaves)
+      .set({
+        leaveDate: leaveDate || existing.leaveDate,
+        type: type || existing.type,
+        reason: reason || existing.reason,
+        updatedAt: new Date()
+      })
+      .where(and(eq(leaves.leaveId, leaveId), eq(leaves.userId, userId), eq(leaves.tenantId, tenantId)))
+      .returning();
+
+    return updated;
+  }
+
+  static async deleteLeave(leaveId: number, userId: number, tenantId: number) {
+    const existing = await db.query.leaves.findFirst({
+      where: and(
+        eq(leaves.leaveId, leaveId),
+        eq(leaves.userId, userId),
+        eq(leaves.tenantId, tenantId),
+        eq(leaves.isDeleted, false)
+      )
+    });
+
+    if (!existing) {
+      throw new Error('Leave request not found or not owned by you.');
+    }
+
+    if (existing.status !== 'Pending') {
+      throw new Error('You can only delete pending leave requests.');
+    }
+
+    const [deleted] = await db.update(leaves)
+      .set({
+        isDeleted: true,
+        updatedAt: new Date()
+      })
+      .where(and(eq(leaves.leaveId, leaveId), eq(leaves.userId, userId), eq(leaves.tenantId, tenantId)))
+      .returning();
+
+    return deleted;
+  }
 }

@@ -77,3 +77,29 @@ export const updateLeaveStatus = async (req: Request, res: Response, next: NextF
     next(err);
   }
 };
+
+export const updateLeave = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const leaveId = Number(req.params.id);
+    const { leaveDate, type, reason } = req.body;
+
+    const leave = await LeaveService.updateLeave(leaveId, user.userId, user.tenantId, { leaveDate, type, reason });
+    return success(res, leave, 'Leave request updated successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteLeave = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const leaveId = Number(req.params.id);
+
+    await LeaveService.deleteLeave(leaveId, user.userId, user.tenantId);
+    return success(res, null, 'Leave request cancelled successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
