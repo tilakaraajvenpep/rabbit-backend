@@ -218,6 +218,26 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
   }
 });
 
+router.get('/me', authenticate, async (req: any, res, next) => {
+  try {
+    const { userId, tenantId } = req.user;
+    const [user] = await db.select({
+      id: users.userId,
+      name: users.fullName,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      allocatedHours: users.allocatedHours,
+      createdAt: users.createdAt,
+    }).from(users).where(and(eq(users.userId, userId), eq(users.tenantId, tenantId)));
+
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    return success(res, user);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.put('/me/profile', authenticate, async (req: any, res, next) => {
   try {
     const { userId } = req.user;
