@@ -33,6 +33,8 @@ export class TicketService {
       tenantId,
       status: 'ToDo',
       estimatedHours: String(data.estimatedHours),
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      milestone: data.milestone || null,
     }).returning();
 
     // Audit Log

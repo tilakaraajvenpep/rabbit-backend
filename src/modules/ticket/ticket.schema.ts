@@ -3,9 +3,16 @@ import { z } from 'zod';
 export const createTicketSchema = z.object({
   title: z.string().min(2),
   description: z.string().optional(),
-  priority: z.enum(['Low', 'Medium', 'High', 'Urgent']).default('Medium'),
-  assignedToUserId: z.number().optional(),
+  priority: z.enum(['Low', 'Medium', 'High', 'Critical']).default('Medium'),
+  assignedToUserId: z.union([z.number(), z.string()]).optional().transform(val => {
+    if (typeof val === 'string') {
+      return val ? parseInt(val, 10) : undefined;
+    }
+    return val;
+  }),
   estimatedHours: z.number().positive(),
+  dueDate: z.string().datetime({ offset: true }).optional().nullable(),
+  milestone: z.string().max(200).optional().nullable(),
 });
 
 export const updateTicketStatusSchema = z.object({
