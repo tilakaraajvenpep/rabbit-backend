@@ -110,47 +110,7 @@ router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => 
   }
 });
 
-import bcrypt from 'bcryptjs';
 
-router.post('/', authenticate, async (req: any, res, next) => {
-  try {
-    const { tenantId, role: userRole } = req.user;
-    const { fullName, email, password, role, tenantId: targetTenantId } = req.body;
-
-    // SuperAdmin can specify tenantId, others are locked to their own
-    const effectiveTenantId = (userRole === 'SuperAdmin' && targetTenantId) 
-      ? parseInt(targetTenantId as string) 
-      : tenantId;
-
-    if (!effectiveTenantId) throw new Error('Valid tenantId is required');
-
-    // Check if user already exists in this tenant
-    const existing = await db.query.users.findFirst({
-      where: and(eq(users.email, email), eq(users.tenantId, effectiveTenantId))
-    });
-
-    if (existing) {
-      console.log('User already exists:', { email, tenantId: effectiveTenantId });
-      return res.status(400).json({ success: false, message: 'User already exists in this tenant' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const [newUser] = await db.insert(users).values({
-      tenantId: effectiveTenantId,
-      fullName,
-      email,
-      passwordHash,
-      role,
-      isActive: true
-    }).returning();
-
-    const { passwordHash: _, ...userWithoutPassword } = newUser;
-    return success(res, userWithoutPassword, 'User created', 201);
-  } catch (err) {
-    next(err);
-  }
-});
 
 router.put('/:id/status', authenticate, async (req: any, res, next) => {
   try {
