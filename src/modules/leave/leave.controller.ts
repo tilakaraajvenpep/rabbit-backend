@@ -5,16 +5,22 @@ import { success } from '../../utils/response.js';
 export const applyLeave = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
-    const { leaveDate, type, reason } = req.body;
+    const { leaveDate, fromDate, toDate, type, reason } = req.body;
 
-    if (!leaveDate || !type) {
-      return res.status(400).json({ status: 'error', message: 'leaveDate and type are required' });
+    if (!leaveDate && (!fromDate || !toDate)) {
+      return res.status(400).json({ status: 'error', message: 'Either leaveDate or both fromDate and toDate are required' });
+    }
+
+    if (!type) {
+      return res.status(400).json({ status: 'error', message: 'type is required' });
     }
 
     const leave = await LeaveService.applyLeave({
       tenantId: user.tenantId,
       userId: user.userId,
       leaveDate,
+      fromDate,
+      toDate,
       type,
       reason
     });

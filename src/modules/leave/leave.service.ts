@@ -4,18 +4,23 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { sendEmail } from '../../utils/email.js';
 
 export class LeaveService {
-  static async applyLeave({ tenantId, userId, leaveDate, type, reason }: any) {
-    // 1. Check if leave already exists for this date and user
-    const existing = await db.query.leaves.findFirst({
-      where: and(
-        eq(leaves.userId, userId),
-        eq(leaves.leaveDate, leaveDate),
-        eq(leaves.isDeleted, false)
-      )
-    });
+  static async applyLeave({ tenantId, userId, fromDate, toDate, leaveDate, type, reason }: any) {
+    const dates: string[] = [];
+    
+    if (fromDate && toDate) {
+      const start = new Date(fromDate);
+      const end = new Date(toDate);
+      const current = new Date(start);
+      while (current <= end) {
+        dates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (leaveDate) {
+      dates.push(leaveDate);
+    }
 
-    if (existing) {
-      throw new Error('Only one leave per day is allowed.');
+    if (dates.length === 0) {
+      throw new Error('No valid dates provided for leave request.');
     }
 
     // 2. Get Employee Details
@@ -27,15 +32,32 @@ export class LeaveService {
       throw new Error('Employee not found.');
     }
 
-    // 3. Create leave record
-    const [newLeave] = await db.insert(leaves).values({
-      tenantId,
-      userId,
-      leaveDate,
-      type, // 'HalfDay' or 'FullDay'
-      reason,
-      status: 'Pending'
-    }).returning();
+    // Verify no existing leaves on ANY of the requested dates
+    for (const dateVal of dates) {
+      const existing = await db.query.leaves.findFirst({
+        where: and(
+          eq(leaves.userId, userId),
+          eq(leaves.leaveDate, dateVal),
+          eq(leaves.isDeleted, false)
+        )
+      });
+      if (existing) {
+        throw new Error(`You have already requested or have an active leave request on ${dateVal}.`);
+      }
+    }
+
+    const createdLeaves = [];
+    for (const dateVal of dates) {
+      const [newLeave] = await db.insert(leaves).values({
+        tenantId,
+        userId,
+        leaveDate: dateVal,
+        type, // 'HalfDay' or 'FullDay'
+        reason,
+        status: 'Pending'
+      }).returning();
+      createdLeaves.push(newLeave);
+    }
 
     // 4. Find PM and concerned Team Leads
     // Let's find PMs in this tenant
@@ -89,13 +111,15 @@ export class LeaveService {
       });
     }
 
+    const dateRangeStr = dates.length === 1 ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`;
+
     // 5. Send alerts / notifications / emails
     const emailSubject = `Leave Request Applied - ${employee.fullName} (${type})`;
     const emailBody = `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
         <h2 style="color: #4f46e5;">Leave Request</h2>
         <p><strong>Employee:</strong> ${employee.fullName}</p>
-        <p><strong>Date:</strong> ${leaveDate}</p>
+        <p><strong>Date(s):</strong> ${dateRangeStr}</p>
         <p><strong>Type:</strong> ${type === 'HalfDay' ? 'Half Day' : 'Full Day'}</p>
         <p><strong>Reason:</strong> ${reason || 'No reason provided'}</p>
         <p>Please log in to the Rabbit Platform to approve or reject this request.</p>
@@ -137,14 +161,14 @@ export class LeaveService {
           projectId: resolvedProjectId,
           type: 'Leave Request Alert',
           severity: 'Medium',
-          message: `Leave Request: ${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${leaveDate}. Reason: ${reason || 'N/A'}`
+          message: `Leave Request: ${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`
         });
       } catch (alertErr) {
         console.error('Failed to insert leave alert:', alertErr);
       }
     }
 
-    return newLeave;
+    return createdLeaves[0];
   }
 
   static async getMyLeaves(userId: number, tenantId: number) {
