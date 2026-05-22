@@ -71,6 +71,17 @@ app.get('/health/db-columns', async (req, res) => {
   }
 });
 
+app.post('/health/migrate-run', async (req, res) => {
+  try {
+    await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;`);
+    await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
+    res.status(200).json({ success: true, message: "Manual migration executed successfully" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 /* -----------------------
    API ROUTES (FIXED)
 ------------------------ */
