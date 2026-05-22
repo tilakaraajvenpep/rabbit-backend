@@ -33,9 +33,12 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  // Vercel deployments (all preview + production URLs)
+  // Actual production Vercel URL (from browser screenshot)
+  'https://rabbit-frontend-eight.vercel.app',
+  // Legacy preview URLs
   'https://rabbit-frontend-5jrifv58k-tilakaraajvenpeps-projects.vercel.app',
-  /^https:\/\/rabbit-frontend.*\.vercel\.app$/,   // any Vercel preview URL
+  // Catch-all: any *.vercel.app subdomain (covers all preview + alias deployments)
+  /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/,
 ];
 
 app.use(cors({
