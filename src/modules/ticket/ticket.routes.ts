@@ -18,4 +18,7 @@ router.put('/:id/progress', ticketController.updateTicketProgress);
 router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.assignTicket);
 router.delete('/:id', checkRole(['TeamLead', 'Employee', 'ProjectManager', 'SuperAdmin', 'TenantAdmin']), ticketController.deleteTicket);
 
+// One-time cleanup: remove old budget-item 'Task:' tickets from production DB
+router.delete('/admin/cleanup-task-tickets', checkRole(['TenantAdmin', 'SuperAdmin']), ticketController.cleanupTaskTickets);
+
 export default router;

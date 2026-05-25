@@ -134,3 +134,34 @@ export const updateTicket = async (req: Request, res: Response, next: NextFuncti
     next(err);
   }
 };
+
+export const cleanupTaskTickets = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const { db } = await import('../../db/index.js');
+    const { tickets } = await import('../../db/schema/index.js');
+    const { like, eq, and } = await import('drizzle-orm');
+
+    // Find all Task: prefixed tickets for this tenant that are not yet deleted
+    const taskTickets = await db
+      .select({ ticketId: tickets.ticketId, ticketCode: tickets.ticketCode, title: tickets.title })
+      .from(tickets)
+      .where(and(like(tickets.title, 'Task:%'), eq(tickets.isDeleted, false), eq(tickets.tenantId, user.tenantId)));
+
+    if (taskTickets.length === 0) {
+      return success(res, { deleted: 0, tickets: [] }, 'No Task: tickets found — database already clean');
+    }
+
+    // Soft-delete them all
+    const deleted = await db
+      .update(tickets)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(and(like(tickets.title, 'Task:%'), eq(tickets.isDeleted, false), eq(tickets.tenantId, user.tenantId)))
+      .returning({ ticketId: tickets.ticketId, ticketCode: tickets.ticketCode, title: tickets.title });
+
+    console.log(`🗑️  Cleanup: removed ${deleted.length} Task: ticket(s) for tenant ${user.tenantId}`);
+    return success(res, { deleted: deleted.length, tickets: deleted }, `Removed ${deleted.length} Task: ticket(s)`);
+  } catch (err) {
+    next(err);
+  }
+};
