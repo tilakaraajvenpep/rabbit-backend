@@ -32,12 +32,44 @@ router.get('/', authenticate, async (req: any, res) => {
     isActive: users.isActive,
     allocatedHours: users.allocatedHours,
     costPerHour: users.costPerHour,
-    teamLeadId: users.teamLeadId
+    teamLeadId: users.teamLeadId,
+    dateOfJoining: users.dateOfJoining
   })
     .from(users)
     .where(whereClause);
 
   return success(res, allUsers);
+});
+
+// PUT /users/:id/date-of-joining — Update date of joining for a user
+router.put('/:id/date-of-joining', authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
+    const { dateOfJoining } = req.body;
+    const { tenantId, role: userRole } = req.user;
+
+    if (userRole !== 'TenantAdmin' && userRole !== 'HR' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, HR, PM or SuperAdmin can update date of joining' });
+    }
+
+    let whereClause = eq(users.userId, parseInt(id));
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
+
+    const [updatedUser] = await db.update(users)
+      .set({ dateOfJoining, updatedAt: new Date() })
+      .where(whereClause)
+      .returning();
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return success(res, { id: updatedUser.userId, dateOfJoining: updatedUser.dateOfJoining }, 'Date of joining updated successfully');
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /users — create a new user within the admin's tenant

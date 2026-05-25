@@ -16,6 +16,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),
+  dateOfJoining: varchar('date_of_joining', { length: 100 }),
 },
 (table) => ({
   tenantEmailUnique: unique().on(table.tenantId, table.email),

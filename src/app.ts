@@ -121,6 +121,7 @@ app.post('/health/migrate-run', async (req, res) => {
     // Users
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "cost_per_hour" numeric(10, 2) DEFAULT '0.00';`);
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "team_lead_id" integer;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "date_of_joining" varchar(100);`);
 
     // Create notifications table if not exists
     await db.execute(sql`
