@@ -84,14 +84,17 @@ export class TicketService {
     }
 
     if (role === 'TeamLead') {
-      whereClause = and(
-        whereClause,
-        or(
-          eq(projects.assignedTeamLeadId, userId),
-          eq(tickets.assignedToUserId, userId)
-        )
-      );
+      if (!projectId) {
+        whereClause = and(
+          whereClause,
+          or(
+            eq(projects.assignedTeamLeadId, userId),
+            eq(tickets.assignedToUserId, userId)
+          )
+        );
+      }
     }
+
 
     const results = await db.select({
       ticket: tickets,
