@@ -64,6 +64,13 @@
       "when": 1779703511531,
       "tag": "0008_clear_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1779707101000,
+      "tag": "0009_add_date_of_joining",
+      "breakpoints": true
     }
   ]
 }
