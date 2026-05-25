@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
 import { tickets, auditLogs, projects } from '../../db/schema/index.js';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, or } from 'drizzle-orm';
 import { generateCode } from '../../utils/codeGenerator.js';
 import { emitToRoom } from '../../socket/socket.js';
 import { NotificationService } from '../notification/notification.service.js';
@@ -83,6 +83,16 @@ export class TicketService {
       whereClause = and(whereClause, eq(tickets.assignedToUserId, userId));
     }
 
+    if (role === 'TeamLead') {
+      whereClause = and(
+        whereClause,
+        or(
+          eq(projects.assignedTeamLeadId, userId),
+          eq(tickets.assignedToUserId, userId)
+        )
+      );
+    }
+
     const results = await db.select({
       ticket: tickets,
       projectName: projects.projectName
@@ -97,6 +107,7 @@ export class TicketService {
       projectName: r.projectName
     }));
   }
+
 
   static async getTicketsByProject(projectId: number, tenantId: number) {
     return await db.query.tickets.findMany({
