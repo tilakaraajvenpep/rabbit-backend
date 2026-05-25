@@ -9,12 +9,12 @@ router.use(authenticate);
 
 // When used under /projects/:id/tickets
 router.get('/', ticketController.getTickets);
-router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager']), ticketController.createTicket);
+router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.createTicket);
 
 // When used under /tickets/:id
 router.put('/:id/status', ticketController.updateTicketStatus);
 router.put('/:id/progress', ticketController.updateTicketProgress);
-router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager']), ticketController.assignTicket);
-router.delete('/:id', checkRole(['TeamLead', 'Employee', 'ProjectManager', 'SuperAdmin']), ticketController.deleteTicket);
+router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.assignTicket);
+router.delete('/:id', checkRole(['TeamLead', 'Employee', 'ProjectManager', 'SuperAdmin', 'TenantAdmin']), ticketController.deleteTicket);
 
 export default router;

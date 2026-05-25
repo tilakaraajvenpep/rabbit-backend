@@ -7,8 +7,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', checkRole(['TeamLead', 'ProjectManager']), alertController.getAlerts);
+router.get('/', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), alertController.getAlerts);
 router.post('/', checkRole(['TeamLead', 'ProjectManager', 'Employee']), alertController.createAlert);
-router.put('/:id/acknowledge', checkRole(['ProjectManager']), alertController.acknowledgeAlert);
+router.put('/:id/acknowledge', checkRole(['ProjectManager', 'TenantAdmin']), alertController.acknowledgeAlert);
 
 export default router;

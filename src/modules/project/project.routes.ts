@@ -14,8 +14,8 @@ router.get('/', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'S
 router.post('/', checkRole(['Sales']), projectController.createProject);
 router.get('/:id', projectController.getProjectById);
 router.put('/:id', checkRole(['Sales']), projectController.updateProject);
-router.put('/:id/status', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager']), projectController.updateProjectStatus);
-router.delete('/:id', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'SuperAdmin']), projectController.deleteProject);
+router.put('/:id/status', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'TenantAdmin']), projectController.updateProjectStatus);
+router.delete('/:id', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin']), projectController.deleteProject);
 
 // Nested Routes
 router.use('/:id/documents', documentRoutes);
