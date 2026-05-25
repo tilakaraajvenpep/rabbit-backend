@@ -207,6 +207,50 @@ export class ProjectService {
       updateData.kanbanColumns = kanbanColumns;
     }
 
+    // Auto-calculate approvedBudget, approvedHours, and endDate if status is Approved
+    if (status === 'Approved') {
+      const hoursToUse = totalHours !== undefined 
+        ? (totalHours ? String(totalHours) : '0.00')
+        : (oldProject?.totalHours ? String(oldProject.totalHours) : '0.00');
+      
+      updateData.approvedHours = hoursToUse;
+
+      const budgetTableToUse = budgetTable !== undefined
+        ? budgetTable
+        : oldProject?.budgetTable;
+      
+      let computedBudget = 0;
+      if (Array.isArray(budgetTableToUse)) {
+        budgetTableToUse.forEach((item: any) => {
+          computedBudget += (Number(item?.cost) || 0);
+        });
+      }
+      
+      updateData.approvedBudget = computedBudget.toFixed(2);
+
+      // Also set endDate from latest milestone date if not already set!
+      const milestonesToUse = milestones !== undefined
+        ? milestones
+        : oldProject?.milestones;
+
+      if (Array.isArray(milestonesToUse) && milestonesToUse.length > 0) {
+        let maxDate: Date | null = null;
+        milestonesToUse.forEach((m: any) => {
+          if (m?.date) {
+            const d = new Date(m.date);
+            if (!isNaN(d.getTime())) {
+              if (!maxDate || d.getTime() > maxDate.getTime()) {
+                maxDate = d;
+              }
+            }
+          }
+        });
+        if (maxDate) {
+          updateData.endDate = maxDate;
+        }
+      }
+    }
+
     const [project] = await db.update(projects)
       .set(updateData)
       .where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)))
