@@ -18,9 +18,12 @@ export const tickets = pgTable('tickets', {
   milestone: varchar('milestone', { length: 200 }),
   progressState: varchar('progress_state', { length: 50 }).default('InProgress'),
   statusNotes: text('status_notes'),
+  timerStartedAt: timestamp('timer_started_at'),
+  timerAccumulatedSeconds: integer('timer_accumulated_seconds').default(0),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),
+
 },
 (table) => ({
   tenantIdx: index('tickets_tenant_idx').on(table.tenantId),

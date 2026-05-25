@@ -98,7 +98,8 @@ export class TicketService {
 
     const results = await db.select({
       ticket: tickets,
-      projectName: projects.projectName
+      projectName: projects.projectName,
+      consumedHours: sql<string>`COALESCE((SELECT SUM(hours_spent) FROM daily_report_items WHERE ticket_id = ${tickets.ticketId} AND is_deleted = false), 0.00)`
     })
       .from(tickets)
       .leftJoin(projects, eq(tickets.projectId, projects.projectId))
@@ -107,17 +108,27 @@ export class TicketService {
 
     return results.map(r => ({
       ...r.ticket,
-      projectName: r.projectName
+      projectName: r.projectName,
+      consumedHours: parseFloat(r.consumedHours || '0.00')
     }));
   }
 
 
   static async getTicketsByProject(projectId: number, tenantId: number) {
-    return await db.query.tickets.findMany({
-      where: and(eq(tickets.projectId, projectId), eq(tickets.tenantId, tenantId), eq(tickets.isDeleted, false)),
-      orderBy: (t, { asc }) => [asc(t.createdAt)],
-    });
+    const results = await db.select({
+      ticket: tickets,
+      consumedHours: sql<string>`COALESCE((SELECT SUM(hours_spent) FROM daily_report_items WHERE ticket_id = ${tickets.ticketId} AND is_deleted = false), 0.00)`
+    })
+      .from(tickets)
+      .where(and(eq(tickets.projectId, projectId), eq(tickets.tenantId, tenantId), eq(tickets.isDeleted, false)))
+      .orderBy(sql`${tickets.createdAt} ASC`);
+
+    return results.map(r => ({
+      ...r.ticket,
+      consumedHours: parseFloat(r.consumedHours || '0.00')
+    }));
   }
+
 
   static async updateTicketStatus(ticketId: number, tenantId: number, userId: number, status: string) {
     const oldTicket = await db.query.tickets.findFirst({
@@ -132,10 +143,24 @@ export class TicketService {
       throw new Error(`Invalid status: ${status}`);
     }
 
+    const updateData: any = { status, updatedAt: new Date() };
+
+    // Transition logic for Kanban Timer
+    if (status === 'InProgress' && oldTicket.status !== 'InProgress') {
+      updateData.timerStartedAt = new Date();
+    } else if (status !== 'InProgress' && oldTicket.status === 'InProgress') {
+      if (oldTicket.timerStartedAt) {
+        const elapsed = Math.floor((new Date().getTime() - new Date(oldTicket.timerStartedAt).getTime()) / 1000);
+        updateData.timerAccumulatedSeconds = (oldTicket.timerAccumulatedSeconds || 0) + elapsed;
+      }
+      updateData.timerStartedAt = null;
+    }
+
     const [ticket] = await db.update(tickets)
-      .set({ status, updatedAt: new Date() })
+      .set(updateData)
       .where(and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)))
       .returning();
+
 
     // Audit Log
     await db.insert(auditLogs).values({
