@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, boolean, timestamp, index, decimal } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, boolean, timestamp, index, decimal, jsonb } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants.js';
 import { users } from './users.js';
 
@@ -19,6 +19,12 @@ export const projects = pgTable('projects', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),
+  comments: text('comments'),
+  budgetTable: jsonb('budget_table'),
+  milestones: jsonb('milestones'),
+  totalHours: decimal('total_hours', { precision: 10, scale: 2 }).default('0.00'),
+  bufferHours: decimal('buffer_hours', { precision: 10, scale: 2 }).default('0.00'),
+  assignedProjectManagerId: integer('assigned_pm_id').references(() => users.userId),
 },
 (table) => ({
   tenantIdx: index('projects_tenant_idx').on(table.tenantId),

@@ -46,13 +46,38 @@ export const getProjectById = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const updateProject = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const id = parseInt(req.params.id);
+    const data = createProjectSchema.parse(req.body);
+    
+    const project = await ProjectService.updateProject(id, user.tenantId, user.userId, data);
+    return success(res, project, 'Project updated successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const updateProjectStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
     const id = parseInt(req.params.id);
-    const { status, assignedTeamLeadId } = updateProjectStatusSchema.parse(req.body);
+    const parsed = updateProjectStatusSchema.parse(req.body);
     
-    const project = await ProjectService.updateProjectStatus(id, user.tenantId, user.userId, status, assignedTeamLeadId);
+    const project = await ProjectService.updateProjectStatus(
+      id,
+      user.tenantId,
+      user.userId,
+      parsed.status,
+      parsed.assignedTeamLeadId ?? undefined,
+      parsed.note ?? undefined,
+      parsed.assignedProjectManagerId ?? undefined,
+      parsed.totalHours,
+      parsed.bufferHours,
+      parsed.budgetTable,
+      parsed.milestones
+    );
     return success(res, project, 'Project status updated');
   } catch (err) {
     next(err);

@@ -8,6 +8,7 @@ import { NotificationService } from '../notification/notification.service.js';
 export class ProjectService {
   static async createProject({ tenantId, userId, data }: any) {
     const projectCode = await generateCode('PRJ', tenantId);
+    const status = data.status || 'PendingReview';
     
     const [project] = await db.insert(projects).values({
       ...data,
@@ -16,7 +17,7 @@ export class ProjectService {
       projectCode,
       tenantId,
       createdByUserId: userId,
-      status: 'PendingReview',
+      status,
     }).returning();
 
     // Audit Log
@@ -29,26 +30,28 @@ export class ProjectService {
       newData: project,
     });
 
-    // Notify PMs of new project pending review
-    try {
-      const pms = await db.query.users.findMany({
-        where: and(
-          eq(users.tenantId, tenantId),
-          eq(users.role, 'ProjectManager'),
-          eq(users.isDeleted, false)
-        )
-      });
-      for (const pm of pms) {
-        await NotificationService.createNotification({
-          tenantId,
-          userId: pm.userId,
-          title: `New Project Submitted: ${project.projectName}`,
-          message: `Project "${project.projectName}" (${project.projectCode}) is pending review.`,
-          type: 'project'
+    // Notify PMs of new project pending review (only if not a draft)
+    if (status === 'PendingReview') {
+      try {
+        const pms = await db.query.users.findMany({
+          where: and(
+            eq(users.tenantId, tenantId),
+            eq(users.role, 'ProjectManager'),
+            eq(users.isDeleted, false)
+          )
         });
+        for (const pm of pms) {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: pm.userId,
+            title: `New Project Submitted: ${project.projectName}`,
+            message: `Project "${project.projectName}" (${project.projectCode}) is pending review.`,
+            type: 'project'
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to create new project notification:', notifErr);
       }
-    } catch (notifErr) {
-      console.error('Failed to create new project notification:', notifErr);
     }
 
     return project;
@@ -101,12 +104,103 @@ export class ProjectService {
     });
   }
 
-  static async updateProjectStatus(projectId: number, tenantId: number, userId: number, status: string, assignedTeamLeadId?: number) {
+  static async updateProject(projectId: number, tenantId: number, userId: number, data: any) {
+    const oldProject = await this.getProjectById(projectId, tenantId);
+    if (!oldProject) {
+      throw new Error('Project not found');
+    }
+
+    const updateData: any = {
+      projectName: data.projectName,
+      client: data.client,
+      description: data.description || null,
+      startDate: data.startDate ? new Date(data.startDate) : null,
+      endDate: data.endDate ? new Date(data.endDate) : null,
+      budgetTable: data.budgetTable || null,
+      milestones: data.milestones || null,
+      status: data.status || oldProject.status,
+      updatedAt: new Date()
+    };
+
+    const [project] = await db.update(projects)
+      .set(updateData)
+      .where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)))
+      .returning();
+
+    // Audit Log
+    await db.insert(auditLogs).values({
+      tenantId,
+      userId,
+      action: 'UPDATE_PROJECT',
+      entityType: 'project',
+      entityId: project.projectId,
+      oldData: oldProject,
+      newData: project,
+    });
+
+    // Notify PMs of resubmission if status changed to PendingReview
+    if (project.status === 'PendingReview' && oldProject.status !== 'PendingReview') {
+      try {
+        const pms = await db.query.users.findMany({
+          where: and(
+            eq(users.tenantId, tenantId),
+            eq(users.role, 'ProjectManager'),
+            eq(users.isDeleted, false)
+          )
+        });
+        for (const pm of pms) {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: pm.userId,
+            title: `Project Resubmitted: ${project.projectName}`,
+            message: `Project "${project.projectName}" (${project.projectCode}) has been revised and resubmitted for review.`,
+            type: 'project'
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to create project resubmission notification:', notifErr);
+      }
+    }
+
+    return project;
+  }
+
+  static async updateProjectStatus(
+    projectId: number, 
+    tenantId: number, 
+    userId: number, 
+    status: string, 
+    assignedTeamLeadId?: number, 
+    note?: string,
+    assignedProjectManagerId?: number,
+    totalHours?: any,
+    bufferHours?: any,
+    budgetTable?: any,
+    milestones?: any
+  ) {
     const oldProject = await this.getProjectById(projectId, tenantId);
     
     const updateData: any = { status, updatedAt: new Date() };
     if (assignedTeamLeadId !== undefined) {
       updateData.assignedTeamLeadId = assignedTeamLeadId;
+    }
+    if (assignedProjectManagerId !== undefined) {
+      updateData.assignedProjectManagerId = assignedProjectManagerId;
+    }
+    if (note !== undefined && note !== null) {
+      updateData.comments = note;
+    }
+    if (totalHours !== undefined) {
+      updateData.totalHours = totalHours ? String(totalHours) : '0.00';
+    }
+    if (bufferHours !== undefined) {
+      updateData.bufferHours = bufferHours ? String(bufferHours) : '0.00';
+    }
+    if (budgetTable !== undefined) {
+      updateData.budgetTable = budgetTable;
+    }
+    if (milestones !== undefined) {
+      updateData.milestones = milestones;
     }
 
     const [project] = await db.update(projects)
@@ -136,6 +230,16 @@ export class ProjectService {
           userId: project.assignedTeamLeadId,
           title: `Project Assigned: ${project.projectName}`,
           message: `You have been assigned as Team Lead for project "${project.projectName}". Status: ${project.status}.`,
+          type: 'project'
+        });
+      }
+
+      if (project.assignedProjectManagerId) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: project.assignedProjectManagerId,
+          title: `Project Assigned: ${project.projectName}`,
+          message: `You have been assigned as Project Manager for project "${project.projectName}". Status: ${project.status}.`,
           type: 'project'
         });
       }

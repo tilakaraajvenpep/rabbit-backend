@@ -36,6 +36,20 @@
       "when": 1779441217847,
       "tag": "0004_opposite_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1779683268345,
+      "tag": "0005_true_proudstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779684991445,
+      "tag": "0006_fluffy_korath",
+      "breakpoints": true
     }
   ]
 }
