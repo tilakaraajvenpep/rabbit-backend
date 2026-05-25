@@ -13,5 +13,6 @@ router.get('/', documentController.getDocuments);
 router.put('/:docId/approve', checkRole(['Accounts']), documentController.approveDocument);
 router.put('/:docId/return', checkRole(['Accounts']), documentController.returnDocument);
 router.get('/:docId/download', documentController.downloadDocument);
+router.get('/:docId/extract', checkRole(['Accounts']), documentController.extractDocumentDetails);
 
 export default router;

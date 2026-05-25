@@ -76,3 +76,14 @@ export const downloadDocument = async (req: Request, res: Response, next: NextFu
     next(err);
   }
 };
+
+export const extractDocumentDetails = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const docId = parseInt(req.params.docId);
+    const extraction = await DocumentService.extractScopeDetails(docId, user.tenantId);
+    return success(res, extraction);
+  } catch (err) {
+    next(err);
+  }
+};

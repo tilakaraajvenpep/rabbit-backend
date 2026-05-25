@@ -2,6 +2,9 @@ import { db } from '../../db/index.js';
 import { scopeDocuments, projects, auditLogs } from '../../db/schema/index.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { emitToRoom } from '../../socket/socket.js';
+import { PDFParse } from 'pdf-parse';
+import fs from 'fs';
+import { parseScopeDocumentText } from './document.parser.js';
 
 export class DocumentService {
   static async uploadDocument({ tenantId, projectId, userId, file }: any) {
@@ -108,5 +111,34 @@ export class DocumentService {
     emitToRoom(`project:${doc.projectId}`, 'document-returned', doc);
 
     return doc;
+  }
+
+  static async extractScopeDetails(docId: number, tenantId: number) {
+    const doc = await this.getDocumentById(docId, tenantId);
+    if (!doc) {
+      throw new Error('Document not found');
+    }
+
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.projectId, doc.projectId), eq(projects.tenantId, tenantId)),
+    });
+
+    if (!fs.existsSync(doc.fileKey)) {
+      throw new Error('Document file not found on disk');
+    }
+
+    const fileBuffer = fs.readFileSync(doc.fileKey);
+    let textContent = '';
+
+    if (doc.fileType === 'application/pdf' || doc.fileName.toLowerCase().endsWith('.pdf')) {
+      const parser = new PDFParse({ data: fileBuffer });
+      const textResult = await parser.getText();
+      textContent = textResult.text;
+      await parser.destroy();
+    } else {
+      textContent = fileBuffer.toString('utf8');
+    }
+
+    return parseScopeDocumentText(textContent, project?.startDate || undefined);
   }
 }
