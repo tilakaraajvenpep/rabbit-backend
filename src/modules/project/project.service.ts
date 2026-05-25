@@ -64,7 +64,7 @@ export class ProjectService {
     if (role === 'Sales') {
       roleFilter = eq(projects.createdByUserId, userId);
     } else if (role === 'Accounts') {
-      roleFilter = inArray(projects.status, ['PendingReview', 'ReturnedForRevision', 'Approved']);
+      roleFilter = inArray(projects.status, ['PendingReview', 'ReturnedForRevision', 'ReturnedToAccounts', 'Approved']);
     } else if (role === 'TeamLead') {
       roleFilter = or(
         eq(projects.assignedTeamLeadId, userId),
