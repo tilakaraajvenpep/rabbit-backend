@@ -176,7 +176,8 @@ export class ProjectService {
     totalHours?: any,
     bufferHours?: any,
     budgetTable?: any,
-    milestones?: any
+    milestones?: any,
+    kanbanColumns?: any
   ) {
     const oldProject = await this.getProjectById(projectId, tenantId);
     
@@ -202,11 +203,76 @@ export class ProjectService {
     if (milestones !== undefined) {
       updateData.milestones = milestones;
     }
+    if (kanbanColumns !== undefined) {
+      updateData.kanbanColumns = kanbanColumns;
+    }
 
     const [project] = await db.update(projects)
       .set(updateData)
       .where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)))
       .returning();
+
+    // Automatically generate tickets when project is approved
+    if (status === 'Approved' && oldProject?.status === 'PendingPMApproval') {
+      try {
+        const { tickets } = await import('../../db/schema/index.js');
+        const { generateCode } = await import('../../utils/codeGenerator.js');
+
+        // 1. Generate tickets for budget items
+        const budgetItems = (project.budgetTable as any) || [];
+        if (Array.isArray(budgetItems)) {
+          for (let i = 0; i < budgetItems.length; i++) {
+            const item = budgetItems[i];
+            const title = item.name || item.section || `Phase ${i + 1}`;
+            const hrs = item.hours ? String(item.hours) : '0.00';
+            const ticketCode = await generateCode('RBT', tenantId);
+
+            await db.insert(tickets).values({
+              tenantId,
+              projectId,
+              ticketCode,
+              title: `Task: ${title}`,
+              description: `Auto-generated task from project cost analysis phase: ${title}.`,
+              estimatedHours: hrs,
+              status: 'ToDo',
+              priority: 'Medium',
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+        }
+
+        // 2. Generate tickets for milestones
+        const milestonesList = (project.milestones as any) || [];
+        if (Array.isArray(milestonesList)) {
+          for (let i = 0; i < milestonesList.length; i++) {
+            const milestone = milestonesList[i];
+            const title = milestone.title || `Milestone ${i + 1}`;
+            const releaseAmount = milestone.amount ? ` (Release Value: ₹${milestone.amount})` : '';
+            const ticketCode = await generateCode('RBT', tenantId);
+            const dueDate = milestone.date ? new Date(milestone.date) : null;
+
+            await db.insert(tickets).values({
+              tenantId,
+              projectId,
+              ticketCode,
+              title: `Milestone: ${title}`,
+              description: `Auto-generated ticket for project milestone "${title}"${releaseAmount}.`,
+              estimatedHours: '8.00',
+              status: 'ToDo',
+              priority: 'High',
+              milestone: title,
+              dueDate: dueDate,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+        }
+        console.log(`✅ Auto-generated tickets successfully for project ${projectId}`);
+      } catch (ticketGenErr) {
+        console.error('❌ Failed to auto-generate tickets:', ticketGenErr);
+      }
+    }
 
     // Audit Log
     await db.insert(auditLogs).values({

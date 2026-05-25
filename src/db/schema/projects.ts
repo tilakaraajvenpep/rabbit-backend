@@ -25,6 +25,7 @@ export const projects = pgTable('projects', {
   totalHours: decimal('total_hours', { precision: 10, scale: 2 }).default('0.00'),
   bufferHours: decimal('buffer_hours', { precision: 10, scale: 2 }).default('0.00'),
   assignedProjectManagerId: integer('assigned_pm_id').references(() => users.userId),
+  kanbanColumns: jsonb('kanban_columns'),
 },
 (table) => ({
   tenantIdx: index('projects_tenant_idx').on(table.tenantId),

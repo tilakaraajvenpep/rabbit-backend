@@ -76,7 +76,8 @@ export const updateProjectStatus = async (req: Request, res: Response, next: Nex
       parsed.totalHours,
       parsed.bufferHours,
       parsed.budgetTable,
-      parsed.milestones
+      parsed.milestones,
+      parsed.kanbanColumns
     );
     return success(res, project, 'Project status updated');
   } catch (err) {

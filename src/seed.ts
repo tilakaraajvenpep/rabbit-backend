@@ -46,7 +46,7 @@ export async function seedDB() {
           { email: 'accounts@venpep.com', role: 'Accounts', fullName: 'Venpep Accounts' },
           { email: 'lead@venpep.com', role: 'TeamLead', fullName: 'Venpep Team Lead' },
           { email: 'emp@venpep.com', role: 'Employee', fullName: 'Venpep Employee' },
-          { email: 'pm@venpep.com', role: 'ProjectManager', fullName: 'Venpep Project Manager' },
+          { email: 'pm@venpep.com', role: 'TenantAdmin', fullName: 'Venpep Project Manager' },
         ]
       }
     ];

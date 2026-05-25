@@ -30,7 +30,9 @@ router.get('/', authenticate, async (req: any, res) => {
     email: users.email,
     role: users.role,
     isActive: users.isActive,
-    allocatedHours: users.allocatedHours
+    allocatedHours: users.allocatedHours,
+    costPerHour: users.costPerHour,
+    teamLeadId: users.teamLeadId
   })
     .from(users)
     .where(whereClause);
@@ -47,7 +49,7 @@ router.post('/', authenticate, async (req: any, res, next) => {
       return res.status(403).json({ success: false, message: 'Only TenantAdmin can create users' });
     }
 
-    const { fullName, email, password, role, tenantId: bodyTenantId } = req.body;
+    const { fullName, email, password, role, costPerHour, teamLeadId, tenantId: bodyTenantId } = req.body;
 
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ success: false, message: 'fullName, email, password and role are required' });
@@ -72,6 +74,8 @@ router.post('/', authenticate, async (req: any, res, next) => {
       email,
       passwordHash,
       role,
+      costPerHour: costPerHour ? String(costPerHour) : '0.00',
+      teamLeadId: teamLeadId ? parseInt(String(teamLeadId)) : null,
       isActive: true,
       isDeleted: false,
       allocatedHours: '8.50',

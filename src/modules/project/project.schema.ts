@@ -8,11 +8,12 @@ export const createProjectSchema = z.object({
   endDate: z.string().optional().nullable(),
   budgetTable: z.any().optional(),
   milestones: z.any().optional(),
-  status: z.enum(['Draft', 'PendingReview', 'ReturnedForRevision', 'Approved', 'InProgress', 'Completed', 'OnHold']).optional(),
+  status: z.enum(['Draft', 'PendingReview', 'ReturnedForRevision', 'PendingPMApproval', 'ReturnedToAccounts', 'Approved', 'InProgress', 'Completed', 'OnHold']).optional(),
+  kanbanColumns: z.any().optional(),
 });
 
 export const updateProjectStatusSchema = z.object({
-  status: z.enum(['Draft', 'PendingReview', 'ReturnedForRevision', 'Approved', 'InProgress', 'Completed', 'OnHold']),
+  status: z.enum(['Draft', 'PendingReview', 'ReturnedForRevision', 'PendingPMApproval', 'ReturnedToAccounts', 'Approved', 'InProgress', 'Completed', 'OnHold']),
   assignedTeamLeadId: z.number().int().positive().optional().nullable(),
   assignedProjectManagerId: z.number().int().positive().optional().nullable(),
   note: z.string().optional().nullable(),
@@ -21,4 +22,5 @@ export const updateProjectStatusSchema = z.object({
   bufferHours: z.any().optional(),
   budgetTable: z.any().optional(),
   milestones: z.any().optional(),
+  kanbanColumns: z.any().optional(),
 });
