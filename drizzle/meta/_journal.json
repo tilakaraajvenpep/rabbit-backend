@@ -57,6 +57,13 @@
       "when": 1779689516222,
       "tag": "0007_blue_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1779703511531,
+      "tag": "0008_clear_hydra",
+      "breakpoints": true
     }
   ]
 }
