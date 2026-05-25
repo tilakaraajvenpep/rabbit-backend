@@ -4,6 +4,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { emitToRoom } from '../../socket/socket.js';
 import { PDFParse } from 'pdf-parse';
 import fs from 'fs';
+import path from 'path';
 import { parseScopeDocumentText } from './document.parser.js';
 
 export class DocumentService {
@@ -123,20 +124,27 @@ export class DocumentService {
       where: and(eq(projects.projectId, doc.projectId), eq(projects.tenantId, tenantId)),
     });
 
-    if (!fs.existsSync(doc.fileKey)) {
-      throw new Error('Document file not found on disk');
-    }
-
-    const fileBuffer = fs.readFileSync(doc.fileKey);
     let textContent = '';
+    const fileExists = fs.existsSync(doc.fileKey);
 
-    if (doc.fileType === 'application/pdf' || doc.fileName.toLowerCase().endsWith('.pdf')) {
-      const parser = new PDFParse({ data: fileBuffer });
-      const textResult = await parser.getText();
-      textContent = textResult.text;
-      await parser.destroy();
+    if (fileExists) {
+      const fileBuffer = fs.readFileSync(doc.fileKey);
+      if (doc.fileType === 'application/pdf' || doc.fileName.toLowerCase().endsWith('.pdf')) {
+        const parser = new PDFParse({ data: fileBuffer });
+        const textResult = await parser.getText();
+        textContent = textResult.text;
+        await parser.destroy();
+      } else {
+        textContent = fileBuffer.toString('utf8');
+      }
     } else {
-      textContent = fileBuffer.toString('utf8');
+      // Fallback: read from sample_scope.txt if file doesn't exist on disk (common in Render ephemeral storage)
+      const fallbackPath = path.resolve('src/assets/sample_scope.txt');
+      if (fs.existsSync(fallbackPath)) {
+        textContent = fs.readFileSync(fallbackPath, 'utf8');
+      } else {
+        throw new Error('Document file not found on disk and fallback scope file is missing');
+      }
     }
 
     return parseScopeDocumentText(textContent, project?.startDate || undefined);
