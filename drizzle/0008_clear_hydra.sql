@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS "timer_requests" (
 	"is_deleted" boolean DEFAULT false
 );
 --> statement-breakpoint
-ALTER TABLE "projects" ADD COLUMN "kanban_columns" jsonb;--> statement-breakpoint
-ALTER TABLE "tickets" ADD COLUMN "timer_started_at" timestamp;--> statement-breakpoint
-ALTER TABLE "tickets" ADD COLUMN "timer_accumulated_seconds" integer DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "kanban_columns" jsonb;--> statement-breakpoint
+ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "timer_started_at" timestamp;--> statement-breakpoint
+ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "timer_accumulated_seconds" integer DEFAULT 0;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "timer_requests" ADD CONSTRAINT "timer_requests_tenant_id_tenants_tenant_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("tenant_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
