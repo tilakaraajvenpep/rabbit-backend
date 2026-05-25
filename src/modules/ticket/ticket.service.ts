@@ -112,16 +112,10 @@ export class TicketService {
 
     if (!oldTicket) throw new Error('Ticket not found');
 
-    // Validate transition
-    const validTransitions: Record<string, string[]> = {
-      'ToDo': ['InProgress'],
-      'InProgress': ['InReview'],
-      'InReview': ['Done', 'InProgress'],
-      'Done': ['InProgress'],
-    };
-
-    if (!validTransitions[oldTicket.status || 'ToDo'].includes(status)) {
-      throw new Error(`Invalid status transition from ${oldTicket.status} to ${status}`);
+    // Allow any valid status value - PM/TenantAdmin need full freedom on Kanban drag-drop
+    const validStatuses = ['ToDo', 'InProgress', 'InReview', 'Done'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
     }
 
     const [ticket] = await db.update(tickets)
