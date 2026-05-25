@@ -207,4 +207,23 @@ export class TicketService {
 
     return { success: true };
   }
+
+  static async updateTicket(ticketId: number, tenantId: number, userId: number, data: any) {
+    const updateData: any = { updatedAt: new Date() };
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.priority !== undefined) updateData.priority = data.priority;
+    if (data.estimatedHours !== undefined) updateData.estimatedHours = String(data.estimatedHours);
+    if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    if (data.assignedToUserId !== undefined) updateData.assignedToUserId = data.assignedToUserId;
+
+    const [ticket] = await db.update(tickets)
+      .set(updateData)
+      .where(and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)))
+      .returning();
+
+    emitToRoom(`project:${ticket.projectId}`, 'ticket-updated', ticket);
+
+    return ticket;
+  }
 }

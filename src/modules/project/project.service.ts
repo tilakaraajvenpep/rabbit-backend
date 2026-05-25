@@ -218,33 +218,9 @@ export class ProjectService {
         const { tickets } = await import('../../db/schema/index.js');
         const { generateCode } = await import('../../utils/codeGenerator.js');
 
-        // 1. Generate tickets for budget items
-        const budgetItems = (project.budgetTable as any) || [];
-        if (Array.isArray(budgetItems)) {
-          for (let i = 0; i < budgetItems.length; i++) {
-            const item = budgetItems[i];
-            const title = item.name || item.section || `Phase ${i + 1}`;
-            const hrs = item.hours ? String(item.hours) : '0.00';
-            const ticketCode = await generateCode('RBT', tenantId);
-
-            await db.insert(tickets).values({
-              tenantId,
-              projectId,
-              ticketCode,
-              title: `Task: ${title}`,
-              description: `Auto-generated task from project cost analysis phase: ${title}.`,
-              estimatedHours: hrs,
-              status: 'ToDo',
-              priority: 'Medium',
-              createdAt: new Date(),
-              updatedAt: new Date()
-            });
-          }
-        }
-
-        // 2. Generate tickets for milestones
+        // Generate tickets ONLY for milestones
         const milestonesList = (project.milestones as any) || [];
-        if (Array.isArray(milestonesList)) {
+        if (Array.isArray(milestonesList) && milestonesList.length > 0) {
           for (let i = 0; i < milestonesList.length; i++) {
             const milestone = milestonesList[i];
             const title = milestone.title || `Milestone ${i + 1}`;
@@ -267,8 +243,10 @@ export class ProjectService {
               updatedAt: new Date()
             });
           }
+          console.log(`✅ Auto-generated ${milestonesList.length} milestone ticket(s) for project ${projectId}`);
+        } else {
+          console.log(`ℹ️ No milestones found for project ${projectId} — skipping ticket generation`);
         }
-        console.log(`✅ Auto-generated tickets successfully for project ${projectId}`);
       } catch (ticketGenErr) {
         console.error('❌ Failed to auto-generate tickets:', ticketGenErr);
       }

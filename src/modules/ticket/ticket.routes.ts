@@ -12,6 +12,7 @@ router.get('/', ticketController.getTickets);
 router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.createTicket);
 
 // When used under /tickets/:id
+router.put('/:id', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.updateTicket);
 router.put('/:id/status', ticketController.updateTicketStatus);
 router.put('/:id/progress', ticketController.updateTicketProgress);
 router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.assignTicket);
