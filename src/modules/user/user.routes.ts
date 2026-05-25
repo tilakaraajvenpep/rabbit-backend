@@ -45,8 +45,8 @@ router.post('/', authenticate, async (req: any, res, next) => {
   try {
     const { tenantId, role: userRole } = req.user;
 
-    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin') {
-      return res.status(403).json({ success: false, message: 'Only TenantAdmin can create users' });
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager or SuperAdmin can create users' });
     }
 
     const { fullName, email, password, role, costPerHour, teamLeadId, tenantId: bodyTenantId } = req.body;
@@ -96,8 +96,8 @@ router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => 
     const { allocatedHours } = req.body;
     const { tenantId, role: userRole } = req.user;
 
-    if (userRole !== 'TenantAdmin') {
-      return res.status(403).json({ success: false, message: 'Only TenantAdmin can set allocated hours' });
+    if (userRole !== 'TenantAdmin' && userRole !== 'ProjectManager') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin or ProjectManager can set allocated hours' });
     }
 
     if (allocatedHours === undefined || allocatedHours === null || Number(allocatedHours) < 0) {
@@ -175,8 +175,8 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
     const { tenantId, role: userRole } = req.user;
     const userIdInt = parseInt(id);
 
-    // Only TenantAdmin or SuperAdmin can delete users
-    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin') {
+    // Only TenantAdmin, ProjectManager or SuperAdmin can delete users
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
