@@ -103,9 +103,23 @@ app.get('/health/db-tables', async (req, res) => {
 
 app.post('/health/migrate-run', async (req, res) => {
   try {
+    // Tickets
     await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;`);
     await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
     
+    // Projects
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "comments" text;`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "budget_table" jsonb;`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "milestones" jsonb;`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "total_hours" numeric(10, 2) DEFAULT '0.00';`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "buffer_hours" numeric(10, 2) DEFAULT '0.00';`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "assigned_pm_id" integer;`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "kanban_columns" jsonb;`);
+    
+    // Users
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "cost_per_hour" numeric(10, 2) DEFAULT '0.00';`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "team_lead_id" integer;`);
+
     // Create notifications table if not exists
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "notifications" (
