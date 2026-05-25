@@ -7,6 +7,6 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', checkRole(['ProjectManager', 'TenantAdmin', 'SuperAdmin']), auditController.getLogs);
+router.get('/', checkRole(['ProjectManager', 'TenantAdmin', 'SuperAdmin', 'Accounts']), auditController.getLogs);
 
 export default router;
