@@ -80,6 +80,7 @@ app.get('/health', async (req, res) => {
       status: 'ok',
       database: dbStatus ? 'connected' : 'error',
       redis: redisStatus === 'PONG' ? 'connected' : redisStatus,
+      version: '1.0.8-hr-leaves',
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
