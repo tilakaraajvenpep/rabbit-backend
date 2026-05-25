@@ -16,6 +16,7 @@ export const updateProjectStatusSchema = z.object({
   assignedTeamLeadId: z.number().int().positive().optional().nullable(),
   assignedProjectManagerId: z.number().int().positive().optional().nullable(),
   note: z.string().optional().nullable(),
+  comments: z.string().optional().nullable(),
   totalHours: z.any().optional(),
   bufferHours: z.any().optional(),
   budgetTable: z.any().optional(),

@@ -71,7 +71,7 @@ export const updateProjectStatus = async (req: Request, res: Response, next: Nex
       user.userId,
       parsed.status,
       parsed.assignedTeamLeadId ?? undefined,
-      parsed.note ?? undefined,
+      parsed.note || parsed.comments || undefined,
       parsed.assignedProjectManagerId ?? undefined,
       parsed.totalHours,
       parsed.bufferHours,
