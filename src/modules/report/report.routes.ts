@@ -8,7 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.post('/daily', checkRole(['Employee', 'TeamLead']), reportController.submitReport);
-router.get('/daily/me', checkRole(['Employee']), reportController.getMyReports);
+router.get('/daily/me', checkRole(['Employee', 'TeamLead']), reportController.getMyReports);
 router.get('/daily/me/range', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getMyReportsRange);
 router.get('/daily/all/range', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getAllReportsRange);
 router.get('/daily/today', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getTodayReports);
