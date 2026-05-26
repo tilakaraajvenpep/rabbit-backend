@@ -10,6 +10,7 @@ export const createProjectSchema = z.object({
   milestones: z.any().optional(),
   status: z.enum(['Draft', 'PendingReview', 'ReturnedForRevision', 'PendingPMApproval', 'ReturnedToAccounts', 'Approved', 'InProgress', 'Completed', 'OnHold']).optional(),
   kanbanColumns: z.any().optional(),
+  projectCategory: z.string().optional().nullable(),
 });
 
 export const updateProjectStatusSchema = z.object({

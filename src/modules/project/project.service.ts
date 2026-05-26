@@ -116,6 +116,7 @@ export class ProjectService {
       budgetTable: data.budgetTable || null,
       milestones: data.milestones || null,
       status: data.status || oldProject.status,
+      projectCategory: data.projectCategory || null,
       updatedAt: new Date()
     };
 

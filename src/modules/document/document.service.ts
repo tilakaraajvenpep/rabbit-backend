@@ -8,7 +8,7 @@ import path from 'path';
 import { parseScopeDocumentText } from './document.parser.js';
 
 export class DocumentService {
-  static async uploadDocument({ tenantId, projectId, userId, file }: any) {
+  static async uploadDocument({ tenantId, projectId, userId, file, documentCategory }: any) {
     // Count existing docs for versioning
     const existingDocs = await db.select({ count: sql<number>`count(*)` })
       .from(scopeDocuments)
@@ -25,6 +25,7 @@ export class DocumentService {
       fileSize: file.size,
       version,
       status: 'Pending',
+      documentCategory: documentCategory || 'scope',
     }).returning();
 
     // Audit Log

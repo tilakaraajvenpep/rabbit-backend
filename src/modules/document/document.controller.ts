@@ -9,6 +9,7 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
     const user = (req as any).user;
     const projectId = parseInt(req.params.id);
     const file = req.file;
+    const documentCategory = req.body.documentCategory || 'scope';
 
     if (!file) return error(res, 'No file uploaded', 400);
 
@@ -16,7 +17,8 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
       tenantId: user.tenantId,
       projectId,
       userId: user.userId,
-      file
+      file,
+      documentCategory
     });
 
     return success(res, doc, 'Document uploaded', 201);
@@ -29,7 +31,13 @@ export const getDocuments = async (req: Request, res: Response, next: NextFuncti
   try {
     const user = (req as any).user;
     const projectId = parseInt(req.params.id);
-    const docs = await DocumentService.getDocumentsByProject(projectId, user.tenantId);
+    let docs = await DocumentService.getDocumentsByProject(projectId, user.tenantId);
+    
+    // Scope document is visible only to Team Lead and Project Manager (plus Admin roles)
+    if (!['TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin'].includes(user.role)) {
+      docs = docs.filter(doc => doc.documentCategory !== 'scope');
+    }
+    
     return success(res, docs);
   } catch (err) {
     next(err);
@@ -69,6 +77,11 @@ export const downloadDocument = async (req: Request, res: Response, next: NextFu
     const doc = await DocumentService.getDocumentById(docId, user.tenantId);
 
     if (!doc) return error(res, 'Document not found', 404);
+
+    // Enforce role visibility on scope documents
+    if (doc.documentCategory === 'scope' && !['TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin'].includes(user.role)) {
+      return error(res, 'Forbidden: You do not have permission to view or download the scope document.', 403);
+    }
 
     const absolutePath = path.resolve(doc.fileKey);
     return res.download(absolutePath, doc.fileName);
