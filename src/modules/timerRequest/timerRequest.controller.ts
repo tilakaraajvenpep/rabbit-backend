@@ -5,7 +5,7 @@ export class TimerRequestController {
   static async createRequest(req: any, res: Response) {
     try {
       const { tenantId, userId } = req.user;
-      const { ticketId, requestType, requestedHours, reason } = req.body;
+      const { ticketId, requestType, requestedHours, reason, teamLeadId } = req.body;
 
       if (!ticketId || !requestType || !reason) {
         return res.status(400).json({ message: 'Missing required fields' });
@@ -17,7 +17,8 @@ export class TimerRequestController {
         ticketId,
         requestType,
         requestedHours,
-        reason
+        reason,
+        teamLeadId
       });
 
       return res.status(201).json({ data: request });

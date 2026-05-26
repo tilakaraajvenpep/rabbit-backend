@@ -4,12 +4,18 @@ import { eq, and, or, inArray, sql } from 'drizzle-orm';
 import { NotificationService } from '../notification/notification.service.js';
 
 export class TimerRequestService {
-  static async createRequest({ tenantId, userId, ticketId, requestType, requestedHours, reason }: any) {
+  static async createRequest({ tenantId, userId, ticketId, requestType, requestedHours, reason, teamLeadId }: any) {
     const ticket = await db.query.tickets.findFirst({
       where: and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)),
     });
 
     if (!ticket) throw new Error('Ticket not found');
+
+    if (teamLeadId) {
+      await db.update(users)
+        .set({ teamLeadId: Number(teamLeadId), updatedAt: new Date() })
+        .where(eq(users.userId, userId));
+    }
 
     const [request] = await db.insert(timerRequests).values({
       tenantId,
@@ -23,17 +29,19 @@ export class TimerRequestService {
       updatedAt: new Date(),
     }).returning();
 
-    // Notify Team Lead if employee has a Team Lead
+    // Get fresh employee data with the updated teamLeadId
     const employee = await db.query.users.findFirst({
       where: eq(users.userId, userId)
     });
 
-    if (employee?.teamLeadId) {
+    const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
+
+    if (activeTeamLeadId) {
       await NotificationService.createNotification({
         tenantId,
-        userId: employee.teamLeadId,
-        title: `New Timer Request: ${employee.fullName}`,
-        message: `Employee "${employee.fullName}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+        userId: activeTeamLeadId,
+        title: `New Timer Request: ${employee?.fullName || 'Employee'}`,
+        message: `Employee "${employee?.fullName || 'Employee'}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
         type: 'alert'
       });
     }
