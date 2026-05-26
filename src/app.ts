@@ -18,6 +18,7 @@ import userRoutes from './modules/user/user.routes.js';
 import leaveRoutes from './modules/leave/leave.routes.js';
 import notificationRoutes from './modules/notification/notification.routes.js';
 import timerRequestRoutes from './modules/timerRequest/timerRequest.routes.js';
+import reportAccessRoutes from './modules/reportAccess/reportAccess.routes.js';
 
 
 
@@ -145,6 +146,26 @@ app.post('/health/migrate-run', async (req, res) => {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS "notifications_user_idx" ON "notifications" ("user_id");`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS "notifications_is_read_idx" ON "notifications" ("is_read");`);
 
+    // Create report_access_requests table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "report_access_requests" (
+        "request_id" serial PRIMARY KEY,
+        "tenant_id" integer NOT NULL,
+        "user_id" integer NOT NULL,
+        "target_date" date NOT NULL,
+        "reason" text NOT NULL,
+        "status" varchar(50) DEFAULT 'Pending' NOT NULL,
+        "reviewed_by_user_id" integer,
+        "reviewer_comments" text,
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now(),
+        "is_deleted" boolean DEFAULT false NOT NULL
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "rar_tenant_idx" ON "report_access_requests" ("tenant_id");`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "rar_user_idx" ON "report_access_requests" ("user_id");`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "rar_date_idx" ON "report_access_requests" ("target_date");`);
+
     res.status(200).json({ success: true, message: "Manual migration executed successfully" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -169,6 +190,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/timer-requests', timerRequestRoutes);
+app.use('/api/report-access', reportAccessRoutes);
 
 
 
