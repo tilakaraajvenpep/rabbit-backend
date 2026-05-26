@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema/index.js';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, ilike } from 'drizzle-orm';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { success } from '../../utils/response.js';
 import bcrypt from 'bcryptjs';
@@ -87,13 +87,15 @@ router.post('/', authenticate, async (req: any, res, next) => {
       return res.status(400).json({ success: false, message: 'fullName, email, password and role are required' });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Determine target tenant ID
     const targetTenantId = (userRole === 'SuperAdmin' && bodyTenantId)
       ? parseInt(bodyTenantId as string)
       : tenantId;
 
-    // Check email uniqueness within tenant
-    const [existing] = await db.select().from(users).where(and(eq(users.email, email), eq(users.tenantId, targetTenantId)));
+    // Check email uniqueness within tenant case-insensitively
+    const [existing] = await db.select().from(users).where(and(ilike(users.email, normalizedEmail), eq(users.tenantId, targetTenantId)));
     if (existing) {
       return res.status(409).json({ success: false, message: 'A user with this email already exists in this tenant' });
     }
@@ -103,7 +105,7 @@ router.post('/', authenticate, async (req: any, res, next) => {
     const [newUser] = await db.insert(users).values({
       tenantId: targetTenantId,
       fullName,
-      email,
+      email: normalizedEmail,
       passwordHash,
       role,
       costPerHour: costPerHour ? String(costPerHour) : '0.00',

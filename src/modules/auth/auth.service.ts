@@ -1,6 +1,6 @@
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema/index.js';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ilike } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { redis } from '../../cache/redis.js';
@@ -25,7 +25,7 @@ export class AuthService {
   static async login({ email, password, tenantId }: any) {
     const user = await db.query.users.findFirst({
       where: and(
-        eq(users.email, email),
+        ilike(users.email, email),
         eq(users.tenantId, tenantId),
         eq(users.isActive, true),
         eq(users.isDeleted, false)
