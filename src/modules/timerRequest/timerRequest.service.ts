@@ -17,6 +17,12 @@ export class TimerRequestService {
         .where(eq(users.userId, userId));
     }
 
+    const employee = await db.query.users.findFirst({
+      where: eq(users.userId, userId)
+    });
+
+    const initialStatus = employee?.role === 'TeamLead' ? 'PendingPM' : 'PendingTL';
+
     const [request] = await db.insert(timerRequests).values({
       tenantId,
       userId,
@@ -24,26 +30,35 @@ export class TimerRequestService {
       requestType,
       requestedHours: requestedHours ? String(requestedHours) : '0.00',
       reason,
-      status: 'PendingTL',
+      status: initialStatus,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
 
-    // Get fresh employee data with the updated teamLeadId
-    const employee = await db.query.users.findFirst({
-      where: eq(users.userId, userId)
-    });
-
-    const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
-
-    if (activeTeamLeadId) {
-      await NotificationService.createNotification({
-        tenantId,
-        userId: activeTeamLeadId,
-        title: `New Timer Request: ${employee?.fullName || 'Employee'}`,
-        message: `Employee "${employee?.fullName || 'Employee'}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
-        type: 'alert'
+    if (initialStatus === 'PendingPM') {
+      const pms = await db.query.users.findMany({
+        where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager'))
       });
+      for (const pm of pms) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: pm.userId,
+          title: `New Timer Request from Team Lead: ${employee?.fullName || 'Team Lead'}`,
+          message: `Team Lead "${employee?.fullName}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+          type: 'alert'
+        });
+      }
+    } else {
+      const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
+      if (activeTeamLeadId) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: activeTeamLeadId,
+          title: `New Timer Request: ${employee?.fullName || 'Employee'}`,
+          message: `Employee "${employee?.fullName || 'Employee'}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+          type: 'alert'
+        });
+      }
     }
 
     return request;
