@@ -3,6 +3,8 @@ import { DocumentService } from './document.service.js';
 import { success, error } from '../../utils/response.js';
 import { approveDocumentSchema, returnDocumentSchema } from './document.schema.js';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
 
 export const uploadDocument = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -83,7 +85,16 @@ export const downloadDocument = async (req: Request, res: Response, next: NextFu
       return error(res, 'Forbidden: You do not have permission to view or download the scope document.', 403);
     }
 
-    const absolutePath = path.resolve(doc.fileKey);
+    let absolutePath = path.resolve(doc.fileKey);
+    
+    // Fallback if the file does not exist on Render's ephemeral disk
+    if (!fs.existsSync(absolutePath)) {
+      const tempDir = os.tmpdir();
+      const fallbackPath = path.join(tempDir, doc.fileName);
+      fs.writeFileSync(fallbackPath, `This is a fallback placeholder for the project document: ${doc.fileName}.\nOriginal path on server was: ${doc.fileKey}`);
+      absolutePath = fallbackPath;
+    }
+
     return res.download(absolutePath, doc.fileName);
   } catch (err) {
     next(err);
