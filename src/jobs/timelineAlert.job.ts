@@ -44,7 +44,7 @@ export const initJobs = () => {
       const { users } = await import('../db/schema/index.js');
       const { eq } = await import('drizzle-orm');
       await db.update(users)
-        .set({ allocatedHours: '8.50', updatedAt: new Date() })
+        .set({ allocatedHours: '0.00', updatedAt: new Date() })
         .where(eq(users.role, 'Employee'));
       logger.info('✅ Weekly work hours allocation reset completed.');
     } catch (err) {

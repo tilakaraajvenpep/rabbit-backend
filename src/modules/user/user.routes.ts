@@ -112,7 +112,7 @@ router.post('/', authenticate, async (req: any, res, next) => {
       teamLeadId: teamLeadId ? parseInt(String(teamLeadId)) : null,
       isActive: true,
       isDeleted: false,
-      allocatedHours: '8.50',
+      allocatedHours: '0.00',
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning();

@@ -9,7 +9,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   role: varchar('role', { length: 50 }).notNull(),
   isActive: boolean('is_active').default(true),
-  allocatedHours: decimal('allocated_hours', { precision: 6, scale: 2 }).default('8.50'),
+  allocatedHours: decimal('allocated_hours', { precision: 6, scale: 2 }).default('0.00'),
   costPerHour: decimal('cost_per_hour', { precision: 10, scale: 2 }).default('0.00'),
   teamLeadId: integer('team_lead_id'),
   lastLoginAt: timestamp('last_login_at'),
