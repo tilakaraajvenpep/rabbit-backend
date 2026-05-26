@@ -66,10 +66,7 @@ export class ProjectService {
     } else if (role === 'Accounts') {
       roleFilter = inArray(projects.status, ['PendingReview', 'ReturnedForRevision', 'ReturnedToAccounts', 'Approved']);
     } else if (role === 'TeamLead') {
-      roleFilter = or(
-        eq(projects.assignedTeamLeadId, userId),
-        inArray(projects.status, ['Approved', 'InProgress'])
-      );
+      roleFilter = eq(projects.assignedTeamLeadId, userId);
     } else if (role === 'ProjectManager' || role === 'SuperAdmin') {
       roleFilter = undefined; // See all
     } else {
