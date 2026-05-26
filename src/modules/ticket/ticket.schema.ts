@@ -3,14 +3,14 @@ import { z } from 'zod';
 export const createTicketSchema = z.object({
   title: z.string().min(2),
   description: z.string().optional(),
-  priority: z.enum(['Low', 'Medium', 'High', 'Critical']).default('Medium'),
+  priority: z.preprocess((val) => val === 'Urgent' ? 'Critical' : val, z.enum(['Low', 'Medium', 'High', 'Critical']).default('Medium')),
   assignedToUserId: z.union([z.number(), z.string()]).optional().transform(val => {
     if (typeof val === 'string') {
       return val ? parseInt(val, 10) : undefined;
     }
     return val;
   }),
-  estimatedHours: z.number().positive(),
+  estimatedHours: z.coerce.number().positive(),
   dueDate: z.string().optional().nullable(),
   milestone: z.string().max(200).optional().nullable(),
 });
