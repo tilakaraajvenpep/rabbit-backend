@@ -4,24 +4,38 @@ import logger from './logger.js';
 let transporter: nodemailer.Transporter;
 
 export const initEmail = async () => {
-  if (process.env.NODE_ENV === 'development') {
-    const testAccount = await nodemailer.createTestAccount();
+  const host = process.env.EMAIL_HOST;
+  const port = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT) : 587;
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_PASS;
+
+  if (host && user && pass) {
     transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
+      host,
+      port,
+      secure: port === 465, // true for 465, false for other ports (using STARTTLS)
       auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
+        user,
+        pass,
       },
     });
-    logger.info('Ethereal Email transporter initialized');
+    logger.info(`SMTP Email transporter initialized for host: ${host}`);
   } else {
-    // SES or other prod config
-    transporter = nodemailer.createTransport({
-      // host: process.env.EMAIL_HOST,
-      // ...
-    });
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      logger.info(`Ethereal test Email transporter initialized (User: ${testAccount.user})`);
+    } catch (err) {
+      logger.error('Failed to initialize fallback Ethereal transporter:', err);
+    }
   }
 };
 
@@ -29,14 +43,15 @@ export const sendEmail = async ({ to, subject, html }: { to: string, subject: st
   if (!transporter) await initEmail();
 
   const info = await transporter.sendMail({
-    from: '"Rabbit 4.0" <no-reply@rabbit.com>',
+    from: process.env.EMAIL_FROM || '"Rabbit 4.0" <no-reply@rabbit.com>',
     to,
     subject,
     html,
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    logger.info(`Email sent: ${info.messageId}`);
-    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  logger.info(`Email sent: ${info.messageId}`);
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    logger.info(`Email Preview URL: ${previewUrl}`);
   }
 };

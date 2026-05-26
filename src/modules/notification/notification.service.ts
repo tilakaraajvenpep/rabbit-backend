@@ -37,7 +37,7 @@ export class NotificationService {
       });
 
       if (targetUser && targetUser.email) {
-        // Formulate beautiful HTML email template
+        const frontendUrl = process.env.FRONTEND_URL || 'https://rabbit-frontend-eight.vercel.app';
         const emailSubject = `[Rabbit 4.0] Notification: ${title}`;
         const emailHtml = `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -56,7 +56,7 @@ export class NotificationService {
               <p style="font-size: 14px; color: #6b7280; margin-top: 24px;">Please sign in to the platform to view details and take actions.</p>
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://rabbit-frontend-5jrifv58k-tilakaraajvenpeps-projects.vercel.app/login" 
+                <a href="${frontendUrl}/login" 
                    style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; display: inline-block;">
                   Go to Dashboard
                 </a>
