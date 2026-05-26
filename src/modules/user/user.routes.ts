@@ -201,6 +201,36 @@ router.put('/:id/role', authenticate, async (req: any, res, next) => {
   }
 });
 
+router.put('/:id/team-lead', authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
+    const { teamLeadId } = req.body;
+    const { tenantId, role: userRole } = req.user;
+
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager or SuperAdmin can update team lead' });
+    }
+
+    let whereClause = eq(users.userId, parseInt(id));
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
+
+    const tId = teamLeadId ? parseInt(String(teamLeadId)) : null;
+
+    const [updatedUser] = await db.update(users)
+      .set({ teamLeadId: tId, updatedAt: new Date() })
+      .where(whereClause)
+      .returning();
+
+    if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
+
+    return success(res, updatedUser, 'Team Lead updated');
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete('/:id', authenticate, async (req: any, res, next) => {
   try {
     const { id } = req.params;
