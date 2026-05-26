@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/auth.js';
-import { checkRole } from '../../middleware/roleCheck.js';
+import { authenticate } from '../../middleware/auth.middleware.js';
+import { checkRole } from '../../middleware/role.middleware.js';
 import {
   createRequest,
   getMyRequests,
