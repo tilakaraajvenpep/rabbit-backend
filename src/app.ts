@@ -104,17 +104,6 @@ app.get('/health/db-tables', async (req, res) => {
   }
 });
 
-app.get('/health/db-host', (req, res) => {
-  const url = process.env.DATABASE_URL || '';
-  try {
-    // Parse hostname without leaking password or sensitive parts
-    const parsed = new URL(url);
-    res.status(200).json({ host: parsed.hostname });
-  } catch {
-    res.status(200).json({ host: 'Invalid URL', startsWith: url.substring(0, 15) });
-  }
-});
-
 app.post('/health/migrate-run', async (req, res) => {
   try {
     // Tickets
