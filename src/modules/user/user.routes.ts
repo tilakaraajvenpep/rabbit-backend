@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema/index.js';
-import { eq, and, inArray, ilike } from 'drizzle-orm';
+import { eq, and, inArray, ilike, desc } from 'drizzle-orm';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { success } from '../../utils/response.js';
 import bcrypt from 'bcryptjs';
@@ -33,10 +33,12 @@ router.get('/', authenticate, async (req: any, res) => {
     allocatedHours: users.allocatedHours,
     costPerHour: users.costPerHour,
     teamLeadId: users.teamLeadId,
-    dateOfJoining: users.dateOfJoining
+    dateOfJoining: users.dateOfJoining,
+    createdAt: users.createdAt
   })
     .from(users)
-    .where(whereClause);
+    .where(whereClause)
+    .orderBy(desc(users.createdAt));
 
   return success(res, allUsers);
 });
