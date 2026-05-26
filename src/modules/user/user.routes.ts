@@ -79,8 +79,8 @@ router.post('/', authenticate, async (req: any, res, next) => {
   try {
     const { tenantId, role: userRole } = req.user;
 
-    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
-      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager or SuperAdmin can create users' });
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager' && userRole !== 'Accounts') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, Accounts or SuperAdmin can create users' });
     }
 
     const { fullName, email, password, role, costPerHour, teamLeadId, tenantId: bodyTenantId } = req.body;
@@ -155,7 +155,39 @@ router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => 
   }
 });
 
+router.put('/:id/cost-per-hour', authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
+    const { costPerHour } = req.body;
+    const { tenantId, role: userRole } = req.user;
 
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'Accounts') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, Accounts, or SuperAdmin can update cost per hour' });
+    }
+
+    if (costPerHour === undefined || costPerHour === null || Number(costPerHour) < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid costPerHour value' });
+    }
+
+    let whereClause = eq(users.userId, parseInt(id));
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
+
+    const [updatedUser] = await db.update(users)
+      .set({ costPerHour: String(costPerHour), updatedAt: new Date() })
+      .where(whereClause)
+      .returning();
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return success(res, { id: updatedUser.userId, costPerHour: updatedUser.costPerHour }, 'Cost per hour updated successfully');
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.put('/:id/status', authenticate, async (req: any, res, next) => {
   try {
