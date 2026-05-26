@@ -101,6 +101,7 @@ export const me = async (req: Request, res: Response, next: NextFunction) => {
       columns: {
         userId: true, fullName: true, email: true, role: true,
         isActive: true, allocatedHours: true, tenantId: true, createdAt: true,
+        teamLeadId: true,
       }
     });
 
