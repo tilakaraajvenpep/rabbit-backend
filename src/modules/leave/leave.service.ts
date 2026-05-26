@@ -5,7 +5,7 @@ import { sendEmail } from '../../utils/email.js';
 import { NotificationService } from '../notification/notification.service.js';
 
 export class LeaveService {
-  static async applyLeave({ tenantId, userId, fromDate, toDate, leaveDate, type, reason }: any) {
+  static async applyLeave({ tenantId, userId, fromDate, toDate, leaveDate, type, reason, autoApprove }: any) {
     const dates: string[] = [];
     
     if (fromDate && toDate) {
@@ -47,15 +47,18 @@ export class LeaveService {
       }
     }
 
+    // When autoApprove is true (e.g. from EOD page), directly approve
+    const initialStatus = autoApprove ? 'Approved' : 'Pending';
+
     const createdLeaves = [];
     for (const dateVal of dates) {
       const [newLeave] = await db.insert(leaves).values({
         tenantId,
         userId,
         leaveDate: dateVal,
-        type, // 'HalfDay' or 'FullDay'
+        type, // 'HalfDay', 'FullDay', or 'Permission'
         reason,
-        status: 'Pending'
+        status: initialStatus
       }).returning();
       createdLeaves.push(newLeave);
     }
@@ -114,61 +117,114 @@ export class LeaveService {
 
     const dateRangeStr = dates.length === 1 ? dates[0] : `${dates[0]} to ${dates[dates.length - 1]}`;
 
-    // 5. Send alerts / notifications / emails
-    const emailSubject = `Leave Request Applied - ${employee.fullName} (${type})`;
-    const emailBody = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-        <h2 style="color: #4f46e5;">Leave Request</h2>
-        <p><strong>Employee:</strong> ${employee.fullName}</p>
-        <p><strong>Date(s):</strong> ${dateRangeStr}</p>
-        <p><strong>Type:</strong> ${type === 'HalfDay' ? 'Half Day' : 'Full Day'}</p>
-        <p><strong>Reason:</strong> ${reason || 'No reason provided'}</p>
-        <p>Please log in to the Rabbit Platform to approve or reject this request.</p>
-      </div>
-    `;
+    const typeLabel = type === 'HalfDay' ? 'Half Day Leave' : type === 'FullDay' ? 'Full Day Leave' : 'Permission';
 
-    // Send email to PMs (independent of notification — email failure must not block notification)
-    for (const pm of pms) {
-      // Email — non-blocking
-      sendEmail({ to: pm.email, subject: emailSubject, html: emailBody })
-        .catch(err => console.error(`Failed to send email to PM ${pm.email}:`, err));
+    if (autoApprove) {
+      // === Auto-Approved Path: Notify HR only ===
+      const emailSubject = `[Auto-Approved] Leave Record — ${employee.fullName} (${typeLabel})`;
+      const emailBody = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h2 style="color: #10b981;">Leave Auto-Approved</h2>
+          <p>This leave was <strong>automatically approved</strong> by the employee via the EOD Report page.</p>
+          <p><strong>Employee:</strong> ${employee.fullName}</p>
+          <p><strong>Email:</strong> ${employee.email}</p>
+          <p><strong>Date(s):</strong> ${dateRangeStr}</p>
+          <p><strong>Leave Type:</strong> ${typeLabel}</p>
+          <p><strong>Reason:</strong> ${reason || 'No reason provided'}</p>
+          <p>This record has been saved in the system and is already approved. No action required.</p>
+        </div>
+      `;
 
-      // In-app notification — always attempt regardless of email
+      // Find HR users in tenant to notify
+      const hrUsers = await db.query.users.findMany({
+        where: and(
+          eq(users.tenantId, tenantId),
+          eq(users.role, 'HR'),
+          eq(users.isDeleted, false)
+        )
+      });
+
+      // Fallback: also notify PMs if no HR users found
+      const notifyTargets = hrUsers.length > 0 ? hrUsers : pms;
+
+      for (const target of notifyTargets) {
+        sendEmail({ to: target.email, subject: emailSubject, html: emailBody })
+          .catch(err => console.error(`Failed to send auto-approve leave email to ${target.email}:`, err));
+
+        try {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: target.userId,
+            title: `Leave Auto-Approved: ${employee.fullName}`,
+            message: `${employee.fullName}'s ${typeLabel} for ${dateRangeStr} has been auto-approved. Reason: ${reason || 'N/A'}`,
+            type: 'leave'
+          });
+        } catch (notifErr) {
+          console.error(`Failed to create HR notification for leave:`, notifErr);
+        }
+      }
+
+      // Also notify the employee
       try {
         await NotificationService.createNotification({
           tenantId,
-          userId: pm.userId,
-          title: `New Leave Request: ${employee.fullName}`,
-          message: `${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
+          userId,
+          title: `Leave Approved: ${typeLabel}`,
+          message: `Your ${typeLabel} request for ${dateRangeStr} has been automatically approved.`,
           type: 'leave'
         });
       } catch (notifErr) {
-        console.error(`Failed to create notification for PM ${pm.email}:`, notifErr);
+        console.error('Failed to create employee leave notification:', notifErr);
+      }
+
+    } else {
+      // === Standard Pending Path: Notify PMs and Team Leads ===
+      const emailSubject = `Leave Request — ${employee.fullName} (${typeLabel})`;
+      const emailBody = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h2 style="color: #4f46e5;">Leave Request</h2>
+          <p><strong>Employee:</strong> ${employee.fullName}</p>
+          <p><strong>Date(s):</strong> ${dateRangeStr}</p>
+          <p><strong>Type:</strong> ${typeLabel}</p>
+          <p><strong>Reason:</strong> ${reason || 'No reason provided'}</p>
+          <p>Please log in to the Rabbit Platform to approve or reject this request.</p>
+        </div>
+      `;
+
+      for (const pm of pms) {
+        sendEmail({ to: pm.email, subject: emailSubject, html: emailBody })
+          .catch(err => console.error(`Failed to send email to PM ${pm.email}:`, err));
+        try {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: pm.userId,
+            title: `New Leave Request: ${employee.fullName}`,
+            message: `${employee.fullName} requested ${typeLabel} for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
+            type: 'leave'
+          });
+        } catch (notifErr) {
+          console.error(`Failed to create notification for PM ${pm.email}:`, notifErr);
+        }
+      }
+
+      for (const tl of teamLeads) {
+        sendEmail({ to: tl.email, subject: emailSubject, html: emailBody })
+          .catch(err => console.error(`Failed to send email to TL ${tl.email}:`, err));
+        try {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: tl.userId,
+            title: `New Leave Request: ${employee.fullName}`,
+            message: `${employee.fullName} requested ${typeLabel} for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
+            type: 'leave'
+          });
+        } catch (notifErr) {
+          console.error(`Failed to create notification for TL ${tl.email}:`, notifErr);
+        }
       }
     }
 
-    // Send email to Team Leads (independent of notification)
-    for (const tl of teamLeads) {
-      // Email — non-blocking
-      sendEmail({ to: tl.email, subject: emailSubject, html: emailBody })
-        .catch(err => console.error(`Failed to send email to TL ${tl.email}:`, err));
-
-      // In-app notification — always attempt regardless of email
-      try {
-        await NotificationService.createNotification({
-          tenantId,
-          userId: tl.userId,
-          title: `New Leave Request: ${employee.fullName}`,
-          message: `${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
-          type: 'leave'
-        });
-      } catch (notifErr) {
-        console.error(`Failed to create notification for TL ${tl.email}:`, notifErr);
-      }
-    }
-
-    // Create system alert for PM/TL awareness
-    // We can associate this alert with the first project or a default project
+    // Create system alert for project awareness
     let resolvedProjectId = projectIds[0];
     if (!resolvedProjectId) {
       const defaultProject = await db.query.projects.findFirst({
@@ -182,9 +238,9 @@ export class LeaveService {
         await db.insert(alerts).values({
           tenantId,
           projectId: resolvedProjectId,
-          type: 'Leave Request Alert',
+          type: 'Leave Alert',
           severity: 'Medium',
-          message: `Leave Request: ${employee.fullName} requested ${type === 'HalfDay' ? 'Half Day' : 'Full Day'} leave for ${dateRangeStr}. Reason: ${reason || 'N/A'}`
+          message: `${autoApprove ? '[Auto-Approved] ' : ''}Leave: ${employee.fullName} — ${typeLabel} on ${dateRangeStr}. Reason: ${reason || 'N/A'}`
         });
       } catch (alertErr) {
         console.error('Failed to insert leave alert:', alertErr);

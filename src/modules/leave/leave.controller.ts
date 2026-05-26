@@ -5,7 +5,7 @@ import { success } from '../../utils/response.js';
 export const applyLeave = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
-    const { leaveDate, fromDate, toDate, type, reason } = req.body;
+    const { leaveDate, fromDate, toDate, type, reason, autoApprove } = req.body;
 
     if (!leaveDate && (!fromDate || !toDate)) {
       return res.status(400).json({ status: 'error', message: 'Either leaveDate or both fromDate and toDate are required' });
@@ -22,7 +22,8 @@ export const applyLeave = async (req: Request, res: Response, next: NextFunction
       fromDate,
       toDate,
       type,
-      reason
+      reason,
+      autoApprove: autoApprove === true || autoApprove === 'true'
     });
 
     return success(res, leave, 'Leave request submitted successfully', 201);

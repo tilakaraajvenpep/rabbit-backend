@@ -59,7 +59,37 @@ export class ProjectService {
 
   static async getProjects({ tenantId, userId, role }: any) {
     let baseWhere = and(eq(projects.tenantId, tenantId), eq(projects.isDeleted, false));
-    
+
+    const { users, tickets: ticketsSchema } = await import('../../db/schema/index.js');
+
+    // For Employee: only return projects where they have at least one ticket assigned
+    if (role === 'Employee') {
+      const employeeTickets = await db.query.tickets.findMany({
+        where: and(
+          eq(ticketsSchema.tenantId, tenantId),
+          eq(ticketsSchema.assignedToUserId, userId),
+          eq(ticketsSchema.isDeleted, false)
+        ),
+        columns: { projectId: true }
+      });
+      const assignedProjectIds = [...new Set(employeeTickets.map(t => t.projectId).filter(Boolean))] as number[];
+
+      if (assignedProjectIds.length === 0) {
+        return []; // No projects to show
+      }
+
+      const whereClause = and(baseWhere, inArray(projects.projectId, assignedProjectIds));
+      const results = await db.select({
+        project: projects,
+        teamLeadName: users.fullName
+      })
+      .from(projects)
+      .leftJoin(users, eq(projects.assignedTeamLeadId, users.userId))
+      .where(whereClause)
+      .orderBy(projects.createdAt);
+      return results.reverse().map(r => ({ ...r.project, teamLead: r.teamLeadName }));
+    }
+
     let roleFilter;
     if (role === 'Sales') {
       roleFilter = eq(projects.createdByUserId, userId);
@@ -67,18 +97,12 @@ export class ProjectService {
       roleFilter = inArray(projects.status, ['PendingReview', 'ReturnedForRevision', 'ReturnedToAccounts', 'Approved']);
     } else if (role === 'TeamLead') {
       roleFilter = eq(projects.assignedTeamLeadId, userId);
-    } else if (role === 'ProjectManager' || role === 'SuperAdmin') {
-      roleFilter = undefined; // See all
     } else {
-      // Employee might see projects they are assigned to via tickets? 
-      // For now, let's say they can see all projects in their tenant or maybe none.
-      // Usually, PM and TL manage projects.
-      roleFilter = undefined;
+      roleFilter = undefined; // ProjectManager, SuperAdmin, TenantAdmin, HR — see all
     }
 
     const whereClause = roleFilter ? and(baseWhere, roleFilter) : baseWhere;
 
-    const { users } = await import('../../db/schema/index.js');
     const results = await db.select({
       project: projects,
       teamLeadName: users.fullName
@@ -88,7 +112,6 @@ export class ProjectService {
     .where(whereClause)
     .orderBy(projects.createdAt);
 
-    // Drizzle reverse sort manually if desc is needed, or just use sql`... DESC`
     return results.reverse().map(r => ({
       ...r.project,
       teamLead: r.teamLeadName
