@@ -1,5 +1,5 @@
 import { db } from '../../db/index.js';
-import { tickets, auditLogs, projects } from '../../db/schema/index.js';
+import { tickets, auditLogs, projects, users } from '../../db/schema/index.js';
 import { eq, and, sql, or } from 'drizzle-orm';
 import { generateCode } from '../../utils/codeGenerator.js';
 import { emitToRoom } from '../../socket/socket.js';
@@ -175,6 +175,26 @@ export class TicketService {
 
     emitToRoom(`project:${ticket.projectId}`, 'ticket-status-updated', ticket);
 
+    // Notify assigned user if status is updated by someone else
+    if (ticket.assignedToUserId && ticket.assignedToUserId !== userId) {
+      try {
+        const updater = await db.query.users.findFirst({
+          where: eq(users.userId, userId),
+          columns: { fullName: true }
+        });
+        
+        await NotificationService.createNotification({
+          tenantId,
+          userId: ticket.assignedToUserId,
+          title: `Ticket Status Updated: ${ticket.ticketCode}`,
+          message: `The status of your ticket "${ticket.title}" was updated to "${status}" by ${updater?.fullName || 'Manager'}.`,
+          type: 'ticket'
+        });
+      } catch (notifErr) {
+        console.error('Failed to create ticket status update notification:', notifErr);
+      }
+    }
+
     return ticket;
   }
 
@@ -248,6 +268,12 @@ export class TicketService {
   }
 
   static async updateTicket(ticketId: number, tenantId: number, userId: number, data: any) {
+    const oldTicket = await db.query.tickets.findFirst({
+      where: and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)),
+    });
+
+    if (!oldTicket) throw new Error('Ticket not found');
+
     const updateData: any = { updatedAt: new Date() };
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;
@@ -262,6 +288,25 @@ export class TicketService {
       .returning();
 
     emitToRoom(`project:${ticket.projectId}`, 'ticket-updated', ticket);
+
+    // Notify assigned user if assignee changed and is not null
+    if (ticket.assignedToUserId && ticket.assignedToUserId !== oldTicket.assignedToUserId) {
+      try {
+        const projectObj = await db.query.projects.findFirst({
+          where: eq(projects.projectId, ticket.projectId)
+        });
+        
+        await NotificationService.createNotification({
+          tenantId,
+          userId: ticket.assignedToUserId,
+          title: `Ticket Assigned: ${ticket.title} (${ticket.ticketCode})`,
+          message: `You have been assigned to ticket "${ticket.title}" under project "${projectObj?.projectName || 'Default'}".`,
+          type: 'ticket'
+        });
+      } catch (notifErr) {
+        console.error('Failed to create ticket update assignment notification:', notifErr);
+      }
+    }
 
     return ticket;
   }
