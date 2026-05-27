@@ -21,7 +21,11 @@ export class TimerRequestService {
       where: eq(users.userId, userId)
     });
 
-    const initialStatus = employee?.role === 'TeamLead' ? 'PendingPM' : 'PendingTL';
+    const initialStatus = (employee?.role === 'ProjectManager' || employee?.role === 'TenantAdmin')
+      ? 'Approved'
+      : employee?.role === 'TeamLead'
+        ? 'PendingPM'
+        : 'PendingTL';
 
     const [request] = await db.insert(timerRequests).values({
       tenantId,
@@ -35,7 +39,14 @@ export class TimerRequestService {
       updatedAt: new Date(),
     }).returning();
 
-    if (initialStatus === 'PendingPM') {
+    if (initialStatus === 'Approved') {
+      const addedSeconds = Math.max(1, parseFloat(requestedHours || '0')) * 3600;
+      await db.update(tickets)
+        .set({
+          timerAccumulatedSeconds: (ticket.timerAccumulatedSeconds || 0) + addedSeconds
+        })
+        .where(eq(tickets.ticketId, ticket.ticketId));
+    } else if (initialStatus === 'PendingPM') {
       const pms = await db.query.users.findMany({
         where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager'))
       });
