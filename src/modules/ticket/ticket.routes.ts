@@ -12,10 +12,10 @@ router.get('/', ticketController.getTickets);
 router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.createTicket);
 
 // When used under /tickets/:id
-router.put('/:id', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.updateTicket);
+router.put('/:id', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'HR']), ticketController.updateTicket);
 router.put('/:id/status', ticketController.updateTicketStatus);
 router.put('/:id/progress', ticketController.updateTicketProgress);
-router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), ticketController.assignTicket);
+router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'HR']), ticketController.assignTicket);
 // One-time cleanup: remove old budget-item 'Task:' tickets from production DB
 router.delete('/admin/cleanup-task-tickets', checkRole(['TenantAdmin', 'SuperAdmin']), ticketController.cleanupTaskTickets);
 

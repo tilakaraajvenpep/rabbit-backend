@@ -79,8 +79,8 @@ router.post('/', authenticate, async (req: any, res, next) => {
   try {
     const { tenantId, role: userRole } = req.user;
 
-    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager' && userRole !== 'Accounts') {
-      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, Accounts or SuperAdmin can create users' });
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager' && userRole !== 'Accounts' && userRole !== 'HR') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, Accounts, HR or SuperAdmin can create users' });
     }
 
     const { fullName, email, password, role, costPerHour, teamLeadId, tenantId: bodyTenantId } = req.body;
