@@ -105,15 +105,6 @@ app.get('/health/db-tables', async (req, res) => {
   }
 });
 
-app.get('/health/debug-doc29', async (req, res) => {
-  try {
-    const doc = await db.execute(sql`SELECT extracted_text FROM scope_documents WHERE document_id = 29`);
-    res.status(200).json({ text: doc[0]?.extracted_text });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.post('/health/migrate-run', async (req, res) => {
   try {
     // Tickets
