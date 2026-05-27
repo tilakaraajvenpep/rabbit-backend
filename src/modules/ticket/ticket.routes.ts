@@ -19,7 +19,7 @@ router.put('/:id/assign', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin'
 // One-time cleanup: remove old budget-item 'Task:' tickets from production DB
 router.delete('/admin/cleanup-task-tickets', checkRole(['TenantAdmin', 'SuperAdmin']), ticketController.cleanupTaskTickets);
 
-router.delete('/:id', checkRole(['TeamLead', 'Employee', 'ProjectManager', 'SuperAdmin', 'TenantAdmin']), ticketController.deleteTicket);
+router.delete('/:id', checkRole(['TeamLead', 'Employee', 'ProjectManager', 'SuperAdmin', 'TenantAdmin', 'HR']), ticketController.deleteTicket);
 
 
 export default router;
