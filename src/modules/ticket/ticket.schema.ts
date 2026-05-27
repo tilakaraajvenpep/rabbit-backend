@@ -16,7 +16,7 @@ export const createTicketSchema = z.object({
 });
 
 export const updateTicketStatusSchema = z.object({
-  status: z.enum(['ToDo', 'InProgress', 'InReview', 'Done']),
+  status: z.string().min(1),
 });
 
 export const assignTicketSchema = z.object({

@@ -137,8 +137,23 @@ export class TicketService {
 
     if (!oldTicket) throw new Error('Ticket not found');
 
-    // Allow any valid status value - PM/TenantAdmin need full freedom on Kanban drag-drop
-    const validStatuses = ['ToDo', 'InProgress', 'InReview', 'Done'];
+    // Allow any valid status value - dynamic check based on project configured Kanban columns
+    let validStatuses = ['ToDo', 'InProgress', 'InReview', 'Done'];
+    if (oldTicket.projectId) {
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.projectId, oldTicket.projectId)
+      });
+      if (project && project.kanbanColumns) {
+        let projectStatuses: string[] = [];
+        if (Array.isArray(project.kanbanColumns)) {
+          projectStatuses = project.kanbanColumns.map((col: any) => col.key);
+        } else {
+          projectStatuses = Object.keys(project.kanbanColumns);
+        }
+        validStatuses = Array.from(new Set([...validStatuses, ...projectStatuses]));
+      }
+    }
+
     if (!validStatuses.includes(status)) {
       throw new Error(`Invalid status: ${status}`);
     }
