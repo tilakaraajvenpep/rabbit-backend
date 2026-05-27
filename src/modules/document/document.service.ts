@@ -16,6 +16,23 @@ export class DocumentService {
     
     const version = Number(existingDocs[0].count) + 1;
 
+    let extractedText: string | null = null;
+    try {
+      if (fs.existsSync(file.path)) {
+        const fileBuffer = fs.readFileSync(file.path);
+        if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
+          const parser = new PDFParse({ data: fileBuffer });
+          const textResult = await parser.getText();
+          extractedText = textResult.text;
+          await parser.destroy();
+        } else {
+          extractedText = fileBuffer.toString('utf8');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to parse uploaded document text:', err);
+    }
+
     const [doc] = await db.insert(scopeDocuments).values({
       tenantId,
       projectId,
@@ -26,6 +43,7 @@ export class DocumentService {
       version,
       status: 'Pending',
       documentCategory: documentCategory || 'scope',
+      extractedText,
     }).returning();
 
     // Audit Log
@@ -126,25 +144,29 @@ export class DocumentService {
     });
 
     let textContent = '';
-    const fileExists = fs.existsSync(doc.fileKey);
 
-    if (fileExists) {
-      const fileBuffer = fs.readFileSync(doc.fileKey);
-      if (doc.fileType === 'application/pdf' || doc.fileName.toLowerCase().endsWith('.pdf')) {
-        const parser = new PDFParse({ data: fileBuffer });
-        const textResult = await parser.getText();
-        textContent = textResult.text;
-        await parser.destroy();
-      } else {
-        textContent = fileBuffer.toString('utf8');
-      }
+    if (doc.extractedText) {
+      textContent = doc.extractedText;
     } else {
-      // Fallback: read from sample_scope.txt if file doesn't exist on disk (common in Render ephemeral storage)
-      const fallbackPath = path.resolve('src/assets/sample_scope.txt');
-      if (fs.existsSync(fallbackPath)) {
-        textContent = fs.readFileSync(fallbackPath, 'utf8');
+      const fileExists = fs.existsSync(doc.fileKey);
+      if (fileExists) {
+        const fileBuffer = fs.readFileSync(doc.fileKey);
+        if (doc.fileType === 'application/pdf' || doc.fileName.toLowerCase().endsWith('.pdf')) {
+          const parser = new PDFParse({ data: fileBuffer });
+          const textResult = await parser.getText();
+          textContent = textResult.text;
+          await parser.destroy();
+        } else {
+          textContent = fileBuffer.toString('utf8');
+        }
       } else {
-        throw new Error('Document file not found on disk and fallback scope file is missing');
+        // Fallback: read from sample_scope.txt if file doesn't exist on disk (common in Render ephemeral storage)
+        const fallbackPath = path.resolve('src/assets/sample_scope.txt');
+        if (fs.existsSync(fallbackPath)) {
+          textContent = fs.readFileSync(fallbackPath, 'utf8');
+        } else {
+          throw new Error('Document file not found on disk and fallback scope file is missing');
+        }
       }
     }
 

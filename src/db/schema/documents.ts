@@ -17,6 +17,7 @@ export const scopeDocuments = pgTable('scope_documents', {
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),
   documentCategory: varchar('document_category', { length: 100 }).default('scope'),
+  extractedText: text('extracted_text'),
 },
 (table) => ({
   tenantIdx: index('documents_tenant_idx').on(table.tenantId),
