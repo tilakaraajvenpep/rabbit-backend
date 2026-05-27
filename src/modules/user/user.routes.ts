@@ -132,8 +132,8 @@ router.put('/:id/allocated-hours', authenticate, async (req: any, res, next) => 
     const { allocatedHours } = req.body;
     const { tenantId, role: userRole } = req.user;
 
-    if (userRole !== 'TenantAdmin' && userRole !== 'ProjectManager') {
-      return res.status(403).json({ success: false, message: 'Only TenantAdmin or ProjectManager can set allocated hours' });
+    if (userRole !== 'TenantAdmin' && userRole !== 'ProjectManager' && userRole !== 'HR') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, or HR can set allocated hours' });
     }
 
     if (allocatedHours === undefined || allocatedHours === null || Number(allocatedHours) < 0) {

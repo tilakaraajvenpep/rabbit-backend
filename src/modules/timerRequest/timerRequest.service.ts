@@ -1,14 +1,14 @@
 import { db } from '../../db/index.js';
-import { timerRequests, tickets, users, projects } from '../../db/schema/index.js';
-import { eq, and, or, inArray, sql } from 'drizzle-orm';
+import { timerRequests, tickets, users } from '../../db/schema/index.js';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { NotificationService } from '../notification/notification.service.js';
 
 export class TimerRequestService {
+
   static async createRequest({ tenantId, userId, ticketId, requestType, requestedHours, reason, teamLeadId }: any) {
     const ticket = await db.query.tickets.findFirst({
       where: and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)),
     });
-
     if (!ticket) throw new Error('Ticket not found');
 
     if (teamLeadId) {
@@ -17,16 +17,9 @@ export class TimerRequestService {
         .where(eq(users.userId, userId));
     }
 
-    const employee = await db.query.users.findFirst({
-      where: eq(users.userId, userId)
-    });
+    const employee = await db.query.users.findFirst({ where: eq(users.userId, userId) });
 
-    const initialStatus = (employee?.role === 'ProjectManager' || employee?.role === 'TenantAdmin')
-      ? 'Approved'
-      : employee?.role === 'TeamLead'
-        ? 'PendingPM'
-        : 'PendingTL';
-
+    // All roles start at PendingTL — chain: TL → PM → Accounts → HR/PM reassigns quota
     const [request] = await db.insert(timerRequests).values({
       tenantId,
       userId,
@@ -34,40 +27,32 @@ export class TimerRequestService {
       requestType,
       requestedHours: requestedHours ? String(requestedHours) : '0.00',
       reason,
-      status: initialStatus,
+      status: 'PendingTL',
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
 
-    if (initialStatus === 'Approved') {
-      const addedSeconds = Math.max(1, parseFloat(requestedHours || '0')) * 3600;
-      await db.update(tickets)
-        .set({
-          timerAccumulatedSeconds: (ticket.timerAccumulatedSeconds || 0) + addedSeconds
-        })
-        .where(eq(tickets.ticketId, ticket.ticketId));
-    } else if (initialStatus === 'PendingPM') {
+    // Notify TL (or all PMs if no TL assigned)
+    const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
+    if (activeTeamLeadId) {
+      await NotificationService.createNotification({
+        tenantId,
+        userId: activeTeamLeadId,
+        title: `Additional Hours Request: ${employee?.fullName || 'Employee'}`,
+        message: `"${employee?.fullName || 'Employee'}" needs additional hours for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+        type: 'alert',
+      });
+    } else {
       const pms = await db.query.users.findMany({
-        where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager'))
+        where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')),
       });
       for (const pm of pms) {
         await NotificationService.createNotification({
           tenantId,
           userId: pm.userId,
-          title: `New Timer Request from Team Lead: ${employee?.fullName || 'Team Lead'}`,
-          message: `Team Lead "${employee?.fullName}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
-          type: 'alert'
-        });
-      }
-    } else {
-      const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
-      if (activeTeamLeadId) {
-        await NotificationService.createNotification({
-          tenantId,
-          userId: activeTeamLeadId,
-          title: `New Timer Request: ${employee?.fullName || 'Employee'}`,
-          message: `Employee "${employee?.fullName || 'Employee'}" requested permission for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
-          type: 'alert'
+          title: `Additional Hours Request: ${employee?.fullName || 'Employee'}`,
+          message: `"${employee?.fullName || 'Employee'}" needs additional hours for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+          type: 'alert',
         });
       }
     }
@@ -88,12 +73,10 @@ export class TimerRequestService {
   }
 
   static async getTLPendingRequests(tenantId: number, tlUserId: number) {
-    // Find all employees whose team lead is tlUserId
     const employees = await db.query.users.findMany({
-      where: and(eq(users.teamLeadId, tlUserId), eq(users.role, 'Employee')),
+      where: and(eq(users.teamLeadId, tlUserId), eq(users.tenantId, tenantId)),
     });
     const employeeIds = employees.map(e => e.userId);
-
     if (employeeIds.length === 0) return [];
 
     return await db.select({
@@ -123,95 +106,157 @@ export class TimerRequestService {
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
-      .where(and(
-        eq(timerRequests.tenantId, tenantId),
-        eq(timerRequests.status, 'PendingPM')
-      ))
+      .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'PendingPM')))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
 
+  static async getAccountsPendingRequests(tenantId: number) {
+    return await db.select({
+      request: timerRequests,
+      employeeName: users.fullName,
+      ticketTitle: tickets.title,
+      ticketCode: tickets.ticketCode,
+    })
+      .from(timerRequests)
+      .leftJoin(users, eq(timerRequests.userId, users.userId))
+      .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'PendingAccounts')))
+      .orderBy(sql`${timerRequests.createdAt} DESC`);
+  }
+
+  // TL forwards to PM
   static async forwardToPM(requestId: number, tenantId: number, tlUserId: number, comments?: string) {
-    const oldRequest = await db.query.timerRequests.findFirst({
+    const old = await db.query.timerRequests.findFirst({
       where: and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)),
     });
-
-    if (!oldRequest) throw new Error('Request not found');
+    if (!old) throw new Error('Request not found');
 
     const [request] = await db.update(timerRequests)
-      .set({
-        status: 'PendingPM',
-        comments: comments || oldRequest.comments,
-        updatedAt: new Date()
-      })
+      .set({ status: 'PendingPM', comments: comments || old.comments, updatedAt: new Date() })
       .where(and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)))
       .returning();
 
-    // Notify Project Managers under this tenant
     const pms = await db.query.users.findMany({
-      where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager'))
+      where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')),
     });
-
-    const employee = await db.query.users.findFirst({
-      where: eq(users.userId, request.userId)
-    });
+    const employee = await db.query.users.findFirst({ where: eq(users.userId, request.userId) });
 
     for (const pm of pms) {
       await NotificationService.createNotification({
         tenantId,
         userId: pm.userId,
-        title: `Timer Request Forwarded: ${employee?.fullName}`,
-        message: `Team Lead forwarded a timer request for "${employee?.fullName}" on ticket "${request.ticketId}". Status: Pending PM review.`,
-        type: 'alert'
+        title: `Additional Hours Request Forwarded by TL: ${employee?.fullName}`,
+        message: `Team Lead forwarded an additional hours request from "${employee?.fullName}". TL notes: ${comments || 'None'}`,
+        type: 'alert',
       });
     }
-
     return request;
   }
 
-  static async respondToRequest(requestId: number, tenantId: number, pmUserId: number, approved: boolean, comments?: string) {
-    const oldRequest = await db.query.timerRequests.findFirst({
+  // PM forwards to Accounts
+  static async forwardToAccounts(requestId: number, tenantId: number, pmUserId: number, comments?: string) {
+    const old = await db.query.timerRequests.findFirst({
       where: and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)),
     });
+    if (!old) throw new Error('Request not found');
 
-    if (!oldRequest) throw new Error('Request not found');
-
-    const status = approved ? 'Approved' : 'Rejected';
+    const combinedComments = comments
+      ? `${old.comments ? old.comments + ' | PM: ' : 'PM: '}${comments}`
+      : old.comments;
 
     const [request] = await db.update(timerRequests)
-      .set({
-        status,
-        comments,
-        updatedAt: new Date()
-      })
+      .set({ status: 'PendingAccounts', comments: combinedComments, updatedAt: new Date() })
       .where(and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)))
       .returning();
 
-    // If approved and request type is 'TimerMissed', we can directly add a default of 4 hours (14400 seconds) 
-    // or let them report. The requirement says:
-    // "once project manager approves, directly send the response to the employee and then they can report for the same ticket by adding under another task"
-    if (approved) {
-      // We can directly add some credit to the ticket's timerAccumulatedSeconds so they are allowed to report!
-      const ticket = await db.query.tickets.findFirst({
-        where: eq(tickets.ticketId, request.ticketId)
-      });
-      if (ticket) {
-        const addedSeconds = Math.max(1, parseFloat(request.requestedHours || '0')) * 3600;
-        await db.update(tickets)
-          .set({
-            timerAccumulatedSeconds: (ticket.timerAccumulatedSeconds || 0) + addedSeconds
-          })
-          .where(eq(tickets.ticketId, ticket.ticketId));
-      }
-    }
+    const accountsUsers = await db.query.users.findMany({
+      where: and(eq(users.tenantId, tenantId), eq(users.role, 'Accounts')),
+    });
+    const employee = await db.query.users.findFirst({ where: eq(users.userId, request.userId) });
 
-    // Notify employee directly
+    for (const acc of accountsUsers) {
+      await NotificationService.createNotification({
+        tenantId,
+        userId: acc.userId,
+        title: `Additional Hours Budget Approval Needed`,
+        message: `PM forwarded an additional hours request from "${employee?.fullName}" needing ${request.requestedHours}h extra. Please review.`,
+        type: 'alert',
+      });
+    }
+    return request;
+  }
+
+  // Reject by TL or PM (both call this)
+  static async respondToRequest(requestId: number, tenantId: number, userId: number, approved: boolean, comments?: string) {
+    const old = await db.query.timerRequests.findFirst({
+      where: and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)),
+    });
+    if (!old) throw new Error('Request not found');
+
+    const [request] = await db.update(timerRequests)
+      .set({ status: 'Rejected', comments, updatedAt: new Date() })
+      .where(and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)))
+      .returning();
+
     await NotificationService.createNotification({
       tenantId,
       userId: request.userId,
-      title: `Timer Request ${status}`,
-      message: `Your request for ticket ID "${request.ticketId}" has been ${status.toLowerCase()} by Project Manager. Comments: ${comments || 'None'}`,
-      type: 'ticket'
+      title: `Additional Hours Request Rejected`,
+      message: `Your additional hours request has been rejected. Comments: ${comments || 'None'}`,
+      type: 'ticket',
     });
+    return request;
+  }
+
+  // Accounts approves or rejects
+  static async accountsRespondToRequest(requestId: number, tenantId: number, accountsUserId: number, approved: boolean, comments?: string) {
+    const old = await db.query.timerRequests.findFirst({
+      where: and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)),
+    });
+    if (!old) throw new Error('Request not found');
+
+    const combinedComments = comments
+      ? `${old.comments ? old.comments + ' | Accounts: ' : 'Accounts: '}${comments}`
+      : old.comments;
+
+    const status = approved ? 'AccountsApproved' : 'Rejected';
+    const [request] = await db.update(timerRequests)
+      .set({ status, comments: combinedComments, updatedAt: new Date() })
+      .where(and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)))
+      .returning();
+
+    const employee = await db.query.users.findFirst({ where: eq(users.userId, request.userId) });
+
+    if (approved) {
+      // Notify HR + PM to reassign quota
+      const hrs = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'HR')) });
+      const pms = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')) });
+      for (const r of [...hrs, ...pms]) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: r.userId,
+          title: `Accounts Approved Extra Hours — Please Reassign Quota for ${employee?.fullName}`,
+          message: `Accounts approved ${request.requestedHours}h extra for "${employee?.fullName}". Update their daily quota in Hour Allocation so they can submit EOD.`,
+          type: 'alert',
+        });
+      }
+      // Notify employee
+      await NotificationService.createNotification({
+        tenantId,
+        userId: request.userId,
+        title: `Additional Hours Approved by Accounts`,
+        message: `Accounts approved your additional hours request. HR/PM will update your daily quota shortly so you can submit your EOD.`,
+        type: 'ticket',
+      });
+    } else {
+      await NotificationService.createNotification({
+        tenantId,
+        userId: request.userId,
+        title: `Additional Hours Rejected by Accounts`,
+        message: `Accounts rejected your additional hours request. Comments: ${comments || 'None'}`,
+        type: 'ticket',
+      });
+    }
 
     return request;
   }

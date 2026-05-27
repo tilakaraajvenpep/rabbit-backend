@@ -10,7 +10,10 @@ router.post('/', TimerRequestController.createRequest);
 router.get('/employee', TimerRequestController.getEmployeeRequests);
 router.get('/tl', TimerRequestController.getTLPendingRequests);
 router.get('/pm', TimerRequestController.getPMPendingRequests);
+router.get('/accounts', TimerRequestController.getAccountsPendingRequests);
 router.put('/:id/forward', TimerRequestController.forwardToPM);
+router.put('/:id/forward-accounts', TimerRequestController.forwardToAccounts);
 router.put('/:id/respond', TimerRequestController.respondToRequest);
+router.put('/:id/accounts-respond', TimerRequestController.accountsRespondToRequest);
 
 export default router;
