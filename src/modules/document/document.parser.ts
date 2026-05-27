@@ -97,8 +97,8 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
     // Match budget lines
     // Example: - UI/UX Mockups & Design Phase: $120,000 - 80 hours
     // Example 2: - Backend API Development: Rs. 450,000, 320 hrs
-    const budgetMatch1 = line.match(/^\s*[-*•\d\.]*\s*([^:\-\n]+)[:\-]\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*[-\s,]+\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)/i);
-    const budgetMatch2 = line.match(/^\s*[-*•\d\.]*\s*([^:\-\n]+)[:\-]\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)\s*[-\s,]+\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i);
+    const budgetMatch1 = line.match(/^\s*[-*•\d\.]*\s*([^:\-–—\n]+)[:\-–—]\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*[\-–—\s,]+\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)/i);
+    const budgetMatch2 = line.match(/^\s*[-*•\d\.]*\s*([^:\-–—\n]+)[:\-–—]\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)\s*[\-–—\s,]+\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i);
 
     if (budgetMatch1 && !line.toLowerCase().includes('milestone')) {
       const item = budgetMatch1[1].trim();
@@ -128,7 +128,7 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
     // Example: - Milestone 1: UX Sign-off - Jan 15, 2026 - $50,000 - Complete mockup designs
     if (line.toLowerCase().includes('milestone')) {
       const cleanLine = line.replace(/^\s*[-*•]\s*/, '').trim();
-      const parts = cleanLine.split(/\s+-\s+/);
+      const parts = cleanLine.split(/\s+[-–—]\s+/);
       if (parts.length >= 3) {
         const title = parts[0].trim();
         const dateStr = parts[1].trim();

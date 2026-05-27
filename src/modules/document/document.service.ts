@@ -3,11 +3,37 @@ import { scopeDocuments, projects, auditLogs } from '../../db/schema/index.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { emitToRoom } from '../../socket/socket.js';
 import { PDFParse } from 'pdf-parse';
+import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
 import { parseScopeDocumentText } from './document.parser.js';
 
 export class DocumentService {
+  static async extractTextFromFile(filePath: string, fileName: string, fileType: string): Promise<string> {
+    const ext = path.extname(fileName).toLowerCase();
+    if (fileType === 'application/pdf' || ext === '.pdf') {
+      const fileBuffer = fs.readFileSync(filePath);
+      const parser = new PDFParse({ data: fileBuffer });
+      const textResult = await parser.getText();
+      const text = textResult.text;
+      await parser.destroy();
+      return text;
+    } else if (ext === '.docx') {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value;
+    } else {
+      return fs.readFileSync(filePath, 'utf8');
+    }
+  }
+
+  static async getFallbackText(): Promise<string> {
+    const fallbackPath = path.resolve('src/assets/sample_scope.txt');
+    if (fs.existsSync(fallbackPath)) {
+      return fs.readFileSync(fallbackPath, 'utf8');
+    }
+    throw new Error('Document file not found on disk and fallback scope file is missing');
+  }
+
   static async uploadDocument({ tenantId, projectId, userId, file, documentCategory }: any) {
     // Count existing docs for versioning
     const existingDocs = await db.select({ count: sql<number>`count(*)` })
@@ -19,15 +45,7 @@ export class DocumentService {
     let extractedText: string | null = null;
     try {
       if (fs.existsSync(file.path)) {
-        const fileBuffer = fs.readFileSync(file.path);
-        if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
-          const parser = new PDFParse({ data: fileBuffer });
-          const textResult = await parser.getText();
-          extractedText = textResult.text;
-          await parser.destroy();
-        } else {
-          extractedText = fileBuffer.toString('utf8');
-        }
+        extractedText = await this.extractTextFromFile(file.path, file.originalname, file.mimetype);
       }
     } catch (err) {
       console.error('Failed to parse uploaded document text:', err);
@@ -150,23 +168,19 @@ export class DocumentService {
     } else {
       const fileExists = fs.existsSync(doc.fileKey);
       if (fileExists) {
-        const fileBuffer = fs.readFileSync(doc.fileKey);
-        if (doc.fileType === 'application/pdf' || doc.fileName.toLowerCase().endsWith('.pdf')) {
-          const parser = new PDFParse({ data: fileBuffer });
-          const textResult = await parser.getText();
-          textContent = textResult.text;
-          await parser.destroy();
-        } else {
-          textContent = fileBuffer.toString('utf8');
+        try {
+          textContent = await this.extractTextFromFile(doc.fileKey, doc.fileName, doc.fileType || '');
+          
+          // Cache it in the database for future calls!
+          await db.update(scopeDocuments)
+            .set({ extractedText: textContent })
+            .where(eq(scopeDocuments.documentId, docId));
+        } catch (err) {
+          console.error('Failed to parse document on the fly:', err);
+          textContent = await this.getFallbackText();
         }
       } else {
-        // Fallback: read from sample_scope.txt if file doesn't exist on disk (common in Render ephemeral storage)
-        const fallbackPath = path.resolve('src/assets/sample_scope.txt');
-        if (fs.existsSync(fallbackPath)) {
-          textContent = fs.readFileSync(fallbackPath, 'utf8');
-        } else {
-          throw new Error('Document file not found on disk and fallback scope file is missing');
-        }
+        textContent = await this.getFallbackText();
       }
     }
 
