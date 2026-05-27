@@ -1,5 +1,5 @@
 import { db } from '../../db/index.js';
-import { timerRequests, tickets, users } from '../../db/schema/index.js';
+import { timerRequests, tickets, users, projects } from '../../db/schema/index.js';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { NotificationService } from '../notification/notification.service.js';
 
@@ -65,9 +65,11 @@ export class TimerRequestService {
       request: timerRequests,
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
+      projectName: projects.projectName,
     })
       .from(timerRequests)
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .leftJoin(projects, eq(tickets.projectId, projects.projectId))
       .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.userId, userId)))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
@@ -84,10 +86,12 @@ export class TimerRequestService {
       employeeName: users.fullName,
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
+      projectName: projects.projectName,
     })
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .leftJoin(projects, eq(tickets.projectId, projects.projectId))
       .where(and(
         eq(timerRequests.tenantId, tenantId),
         eq(timerRequests.status, 'PendingTL'),
@@ -102,10 +106,12 @@ export class TimerRequestService {
       employeeName: users.fullName,
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
+      projectName: projects.projectName,
     })
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .leftJoin(projects, eq(tickets.projectId, projects.projectId))
       .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'PendingPM')))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
@@ -116,10 +122,12 @@ export class TimerRequestService {
       employeeName: users.fullName,
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
+      projectName: projects.projectName,
     })
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .leftJoin(projects, eq(tickets.projectId, projects.projectId))
       .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'PendingAccounts')))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
@@ -266,6 +274,7 @@ export class TimerRequestService {
       employeeName: users.fullName,
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
+      projectName: projects.projectName,
       employeeId: users.userId,
       employeeRole: users.role,
       currentAllocatedHours: users.allocatedHours,
@@ -273,6 +282,7 @@ export class TimerRequestService {
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .leftJoin(projects, eq(tickets.projectId, projects.projectId))
       .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'AccountsApproved')))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
