@@ -71,7 +71,16 @@ export class ReportAccessService {
 
   static async getPendingRequests(tenantId: number) {
     const results = await db.select({
-      request: reportAccessRequests,
+      requestId: reportAccessRequests.requestId,
+      tenantId: reportAccessRequests.tenantId,
+      userId: reportAccessRequests.userId,
+      targetDate: reportAccessRequests.targetDate,
+      reason: reportAccessRequests.reason,
+      status: reportAccessRequests.status,
+      reviewedByUserId: reportAccessRequests.reviewedByUserId,
+      reviewerComments: reportAccessRequests.reviewerComments,
+      createdAt: reportAccessRequests.createdAt,
+      updatedAt: reportAccessRequests.updatedAt,
       employeeName: users.fullName,
       employeeEmail: users.email
     })
@@ -84,7 +93,7 @@ export class ReportAccessService {
       ))
       .orderBy(sql`${reportAccessRequests.createdAt} DESC`);
 
-    return results.map(r => ({ ...r.request, employeeName: r.employeeName, employeeEmail: r.employeeEmail }));
+    return results;
   }
 
   static async respondToRequest(requestId: number, tenantId: number, reviewerUserId: number, approved: boolean, comments?: string) {
