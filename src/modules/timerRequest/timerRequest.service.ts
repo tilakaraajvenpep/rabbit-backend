@@ -260,4 +260,20 @@ export class TimerRequestService {
 
     return request;
   }
+  static async getHRApprovedRequests(tenantId: number) {
+    return await db.select({
+      request: timerRequests,
+      employeeName: users.fullName,
+      ticketTitle: tickets.title,
+      ticketCode: tickets.ticketCode,
+      employeeId: users.userId,
+      employeeRole: users.role,
+      currentAllocatedHours: users.allocatedHours,
+    })
+      .from(timerRequests)
+      .leftJoin(users, eq(timerRequests.userId, users.userId))
+      .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'AccountsApproved')))
+      .orderBy(sql`${timerRequests.createdAt} DESC`);
+  }
 }

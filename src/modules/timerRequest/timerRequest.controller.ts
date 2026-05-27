@@ -111,4 +111,14 @@ export class TimerRequestController {
       return res.status(500).json({ message: err.message || 'Server error' });
     }
   }
+
+  static async getHRApprovedRequests(req: any, res: Response) {
+    try {
+      const { tenantId } = req.user;
+      const requests = await TimerRequestService.getHRApprovedRequests(tenantId);
+      return res.status(200).json({ data: requests });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || 'Server error' });
+    }
+  }
 }
