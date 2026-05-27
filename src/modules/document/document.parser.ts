@@ -111,6 +111,53 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
     const isMilestone = lowerLine.includes('milestone') || lowerLine.includes('phase') || /^\s*[-*•]?\s*m\d+[:\s]/i.test(line);
 
     if (!isMilestone) {
+      // Strategy D: Check if line contains ONLY Hours and Cost (with no preceding description text)
+      // Hours (1-3 digits) followed by Cost (5+ chars)
+      const hoursCostMatch = line.match(/^\s*(\d{1,3})\s+[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*$/);
+      if (hoursCostMatch) {
+        const hours = parseFloat(hoursCostMatch[1]);
+        const cost = parseFloat(hoursCostMatch[2].replace(/,/g, ''));
+        if (!isNaN(hours) && !isNaN(cost) && cost >= 1000) {
+          currentHours = hours;
+          currentCost = cost;
+          if (currentDescription) {
+            budgetTable.push({
+              key: budgetKey++,
+              item: currentDescription,
+              cost: currentCost,
+              hours: currentHours
+            });
+            currentDescription = '';
+            currentHours = null;
+            currentCost = null;
+          }
+          continue;
+        }
+      }
+
+      // Cost (5+ chars) followed by Hours (1-3 digits)
+      const costHoursMatch = line.match(/^\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s+(\d{1,3})\s*$/);
+      if (costHoursMatch) {
+        const cost = parseFloat(costHoursMatch[1].replace(/,/g, ''));
+        const hours = parseFloat(costHoursMatch[2]);
+        if (!isNaN(hours) && !isNaN(cost) && cost >= 1000) {
+          currentHours = hours;
+          currentCost = cost;
+          if (currentDescription) {
+            budgetTable.push({
+              key: budgetKey++,
+              item: currentDescription,
+              cost: currentCost,
+              hours: currentHours
+            });
+            currentDescription = '';
+            currentHours = null;
+            currentCost = null;
+          }
+          continue;
+        }
+      }
+
       // Match single-line budget lines
       // Strategy B: Description followed by Hours (1-3 digits) and Cost (5+ chars including digits/commas/dots)
       const matchB = line.match(/^(.+?)\s+(\d{1,3})\s+[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*$/i);
