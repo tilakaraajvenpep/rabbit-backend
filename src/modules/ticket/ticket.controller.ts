@@ -99,7 +99,8 @@ export const assignTicket = async (req: Request, res: Response, next: NextFuncti
   try {
     const user = (req as any).user;
     const id = parseInt(req.params.id);
-    const { assignedToUserId } = assignTicketSchema.parse(req.body);
+    const bodyVal = req.body.assignedToUserId !== undefined ? req.body.assignedToUserId : req.body.userId;
+    const assignedToUserId = bodyVal ? Number(bodyVal) : null;
 
     const ticket = await TicketService.assignTicket(id, user.tenantId, user.userId, assignedToUserId);
     return success(res, ticket, 'Ticket assigned');

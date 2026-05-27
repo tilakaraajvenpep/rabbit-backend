@@ -16,6 +16,6 @@ router.delete('/:id', checkRole(['Employee']), leaveController.deleteLeave);
 // PM / TL / Accounts routes
 router.get('/pending', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'Accounts']), leaveController.getPendingLeaves);
 router.get('/all', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'Accounts', 'HR']), leaveController.getAllLeaves);
-router.put('/:id/status', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'Accounts']), leaveController.updateLeaveStatus);
+router.put('/:id/status', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'Accounts', 'HR']), leaveController.updateLeaveStatus);
 
 export default router;

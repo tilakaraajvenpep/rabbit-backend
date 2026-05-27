@@ -226,9 +226,9 @@ export class TicketService {
     return ticket;
   }
 
-  static async assignTicket(ticketId: number, tenantId: number, userId: number, assignedToUserId: number) {
+  static async assignTicket(ticketId: number, tenantId: number, userId: number, assignedToUserId: number | null) {
     const [ticket] = await db.update(tickets)
-      .set({ assignedToUserId, updatedAt: new Date() })
+      .set({ assignedToUserId: assignedToUserId as any, updatedAt: new Date() })
       .where(and(eq(tickets.ticketId, ticketId), eq(tickets.tenantId, tenantId)))
       .returning();
 
