@@ -94,39 +94,89 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
   let milestoneKey = 1;
 
   for (const line of lines) {
-    // Match budget lines
-    // Example: - UI/UX Mockups & Design Phase: $120,000 - 80 hours
-    // Example 2: - Backend API Development: Rs. 450,000, 320 hrs
-    const budgetMatch1 = line.match(/^\s*[-*•\d\.]*\s*([^:\-–—\n]+)[:\-–—]\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*[\-–—\s,]+\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)/i);
-    const budgetMatch2 = line.match(/^\s*[-*•\d\.]*\s*([^:\-–—\n]+)[:\-–—]\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)\s*[\-–—\s,]+\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i);
+    const lowerLine = line.toLowerCase();
 
-    if (budgetMatch1 && !line.toLowerCase().includes('milestone')) {
-      const item = budgetMatch1[1].trim();
-      const cost = parseFloat(budgetMatch1[2].replace(/,/g, ''));
-      const hours = parseFloat(budgetMatch1[3].replace(/,/g, ''));
-      budgetTable.push({
-        key: budgetKey++,
-        item,
-        cost,
-        hours
-      });
-      continue;
-    } else if (budgetMatch2 && !line.toLowerCase().includes('milestone')) {
-      const item = budgetMatch2[1].trim();
-      const hours = parseFloat(budgetMatch2[2].replace(/,/g, ''));
-      const cost = parseFloat(budgetMatch2[3].replace(/,/g, ''));
-      budgetTable.push({
-        key: budgetKey++,
-        item,
-        cost,
-        hours
-      });
+    // Skip header lines and total lines
+    if (lowerLine.includes('total') || lowerLine.includes('summary') || lowerLine.includes('description') || lowerLine.includes('cost (inr)') || lowerLine.includes('total hours')) {
       continue;
     }
 
+    // Match budget lines
+    // Strategy B: Description followed by Hours (1-3 digits) and Cost (5+ chars including digits/commas/dots)
+    // Example: Hardware Prototyping & Enclosure Engineering 140 ₹4,90,000.00
+    const matchB = line.match(/^(.+?)\s+(\d{1,3})\s+[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*$/i);
+    if (matchB && !lowerLine.includes('milestone')) {
+      const item = matchB[1].replace(/^\s*[-*•\d\.]*\s*/, '').trim();
+      const hours = parseFloat(matchB[2]);
+      const cost = parseFloat(matchB[3].replace(/,/g, ''));
+      if (item && !isNaN(hours) && !isNaN(cost) && cost >= 1000) {
+        budgetTable.push({
+          key: budgetKey++,
+          item,
+          cost,
+          hours
+        });
+        continue;
+      }
+    }
+
+    // Strategy C: Description followed by Cost (5+ chars) and Hours (1-3 digits)
+    // Example: Hardware Prototyping & Enclosure Engineering ₹4,90,000.00 140
+    const matchC = line.match(/^(.+?)\s+[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s+(\d{1,3})\s*$/i);
+    if (matchC && !lowerLine.includes('milestone')) {
+      const item = matchC[1].replace(/^\s*[-*•\d\.]*\s*/, '').trim();
+      const cost = parseFloat(matchC[2].replace(/,/g, ''));
+      const hours = parseFloat(matchC[3]);
+      if (item && !isNaN(hours) && !isNaN(cost) && cost >= 1000) {
+        budgetTable.push({
+          key: budgetKey++,
+          item,
+          cost,
+          hours
+        });
+        continue;
+      }
+    }
+
+    // Strategy A1: Match with Colons / Hyphens and explicit hours
+    // Example: - UI/UX Mockups & Design Phase: $120,000 - 80 hours
+    const budgetMatch1 = line.match(/^\s*[-*•\d\.]*\s*([^:\-–—\n]+)[:\-–—]\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)\s*[\-–—\s,]+\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)/i);
+    if (budgetMatch1 && !lowerLine.includes('milestone')) {
+      const item = budgetMatch1[1].trim();
+      const cost = parseFloat(budgetMatch1[2].replace(/,/g, ''));
+      const hours = parseFloat(budgetMatch1[3].replace(/,/g, ''));
+      if (item && !isNaN(hours) && !isNaN(cost)) {
+        budgetTable.push({
+          key: budgetKey++,
+          item,
+          cost,
+          hours
+        });
+        continue;
+      }
+    }
+
+    // Strategy A2: Match with Colons / Hyphens and explicit hours swapped
+    const budgetMatch2 = line.match(/^\s*[-*•\d\.]*\s*([^:\-–—\n]+)[:\-–—]\s*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)\s*[\-–—\s,]+\s*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i);
+    if (budgetMatch2 && !lowerLine.includes('milestone')) {
+      const item = budgetMatch2[1].trim();
+      const hours = parseFloat(budgetMatch2[2].replace(/,/g, ''));
+      const cost = parseFloat(budgetMatch2[3].replace(/,/g, ''));
+      if (item && !isNaN(hours) && !isNaN(cost)) {
+        budgetTable.push({
+          key: budgetKey++,
+          item,
+          cost,
+          hours
+        });
+        continue;
+      }
+    }
+
     // Match milestone lines
+    // Strategy M1: Split on spaces around dash
     // Example: - Milestone 1: UX Sign-off - Jan 15, 2026 - $50,000 - Complete mockup designs
-    if (line.toLowerCase().includes('milestone')) {
+    if (lowerLine.includes('milestone')) {
       const cleanLine = line.replace(/^\s*[-*•]\s*/, '').trim();
       const parts = cleanLine.split(/\s+[-–—]\s+/);
       if (parts.length >= 3) {
@@ -135,6 +185,35 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
         const amountStr = parts[2].trim().replace(/[\$₹£€,]/g, '');
         const amount = parseFloat(amountStr) || 0;
         const description = parts[3] ? parts[3].trim() : title;
+
+        let parsedDate: string | null = null;
+        try {
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            parsedDate = d.toISOString();
+          }
+        } catch {
+          // ignore
+        }
+
+        milestones.push({
+          key: milestoneKey++,
+          title,
+          date: parsedDate,
+          amount,
+          description
+        });
+        continue;
+      }
+
+      // Strategy M2: Match milestone name, date, and amount without hyphens
+      // Example: Milestone 1 UX Sign-off Jan 15, 2026 $50,000
+      const milestoneMatch = cleanLine.match(/^(milestone\s*\d+[^:\-–—\n]*)\s+([A-Za-z]{3}\s+\d{1,2},\s*\d{4})\s+[\$₹£€]?\s*([\d,]+)(?:\s+(.+))?/i);
+      if (milestoneMatch) {
+        const title = milestoneMatch[1].trim();
+        const dateStr = milestoneMatch[2].trim();
+        const amount = parseFloat(milestoneMatch[3].replace(/,/g, '')) || 0;
+        const description = milestoneMatch[4] ? milestoneMatch[4].trim() : title;
 
         let parsedDate: string | null = null;
         try {
