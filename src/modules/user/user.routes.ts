@@ -325,11 +325,14 @@ router.get('/me', authenticate, async (req: any, res, next) => {
     const { userId, tenantId } = req.user;
     const [user] = await db.select({
       id: users.userId,
+      userId: users.userId,
       name: users.fullName,
+      fullName: users.fullName,
       email: users.email,
       role: users.role,
       isActive: users.isActive,
       allocatedHours: users.allocatedHours,
+      teamLeadId: users.teamLeadId,
       createdAt: users.createdAt,
     }).from(users).where(and(eq(users.userId, userId), eq(users.tenantId, tenantId)));
 
