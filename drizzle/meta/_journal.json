@@ -78,6 +78,13 @@
       "when": 1779876424432,
       "tag": "0010_flimsy_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1779876651255,
+      "tag": "0011_lazy_scarecrow",
+      "breakpoints": true
     }
   ]
 }

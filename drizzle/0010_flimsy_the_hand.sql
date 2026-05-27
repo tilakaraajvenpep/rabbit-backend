@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS "report_access_requests" (
 );
 --> statement-breakpoint
 ALTER TABLE "users" ALTER COLUMN "allocated_hours" SET DEFAULT '0.00';--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "date_of_joining" varchar(100);--> statement-breakpoint
-ALTER TABLE "projects" ADD COLUMN "project_category" varchar(255);--> statement-breakpoint
-ALTER TABLE "scope_documents" ADD COLUMN "document_category" varchar(100) DEFAULT 'scope';--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "date_of_joining" varchar(100);--> statement-breakpoint
+ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "project_category" varchar(255);--> statement-breakpoint
+ALTER TABLE "scope_documents" ADD COLUMN IF NOT EXISTS "document_category" varchar(100) DEFAULT 'scope';--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "report_access_requests" ADD CONSTRAINT "report_access_requests_tenant_id_tenants_tenant_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("tenant_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION

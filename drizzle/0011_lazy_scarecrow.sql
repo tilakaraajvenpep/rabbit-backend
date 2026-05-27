@@ -1,0 +1,1 @@
+ALTER TABLE "scope_documents" ADD COLUMN "extracted_text" text;
