@@ -293,12 +293,18 @@ export class ProjectService {
             const ticketCode = await generateCode('RBT', tenantId);
             const dueDate = milestone.date ? new Date(milestone.date) : null;
 
+            const milestoneDescription = milestone.description ? ` - ${milestone.description}` : '';
+            const ticketTitle = `Milestone: ${title}${milestoneDescription}`.substring(0, 300);
+            const ticketDescription = milestone.description 
+              ? `${milestone.description}\n\nAuto-generated ticket for project milestone "${title}"${releaseAmount}.`
+              : `Auto-generated ticket for project milestone "${title}"${releaseAmount}.`;
+
             await db.insert(tickets).values({
               tenantId,
               projectId,
               ticketCode,
-              title: `Milestone: ${title}`,
-              description: `Auto-generated ticket for project milestone "${title}"${releaseAmount}.`,
+              title: ticketTitle,
+              description: ticketDescription,
               estimatedHours: '8.00',
               status: 'ToDo',
               priority: 'High',
