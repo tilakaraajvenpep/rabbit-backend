@@ -222,6 +222,30 @@ export class LeaveService {
           console.error(`Failed to create notification for TL ${tl.email}:`, notifErr);
         }
       }
+
+      // Also notify HR users so they can approve/reject from the Leave Requests dashboard
+      const hrUsers = await db.query.users.findMany({
+        where: and(
+          eq(users.tenantId, tenantId),
+          eq(users.role, 'HR'),
+          eq(users.isDeleted, false)
+        )
+      });
+      for (const hr of hrUsers) {
+        sendEmail({ to: hr.email, subject: emailSubject, html: emailBody })
+          .catch(err => console.error(`Failed to send email to HR ${hr.email}:`, err));
+        try {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: hr.userId,
+            title: `New Leave Request (Pending Approval): ${employee.fullName}`,
+            message: `${employee.fullName} requested ${typeLabel} for ${dateRangeStr}. Reason: ${reason || 'N/A'}. Please review in Leave Requests.`,
+            type: 'leave'
+          });
+        } catch (notifErr) {
+          console.error(`Failed to create notification for HR ${hr.email}:`, notifErr);
+        }
+      }
     }
 
     // Create system alert for project awareness
