@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "prev_allocated_hours" numeric(6, 2) DEFAULT '0.00';
