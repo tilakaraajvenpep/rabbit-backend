@@ -288,15 +288,14 @@ export class ProjectService {
           for (let i = 0; i < milestonesList.length; i++) {
             const milestone = milestonesList[i];
             const title = milestone.title || `Milestone ${i + 1}`;
-            const releaseAmount = milestone.amount ? ` (Release Value: ₹${milestone.amount})` : '';
             const ticketCode = await generateCode('RBT', tenantId);
             const dueDate = milestone.date ? new Date(milestone.date) : null;
 
             const milestoneDescription = milestone.description ? ` - ${milestone.description}` : '';
             const ticketTitle = `Milestone: ${title}${milestoneDescription}`.substring(0, 300);
             const ticketDescription = milestone.description 
-              ? `${milestone.description}\n\nAuto-generated ticket for project milestone "${title}"${releaseAmount}.`
-              : `Auto-generated ticket for project milestone "${title}"${releaseAmount}.`;
+              ? `${milestone.description}\n\nAuto-generated ticket for project milestone "${title}".`
+              : `Auto-generated ticket for project milestone "${title}".`;
 
             await db.insert(tickets).values({
               tenantId,
