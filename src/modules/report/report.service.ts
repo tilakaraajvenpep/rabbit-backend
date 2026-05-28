@@ -1,5 +1,5 @@
 import { db } from '../../db/index.js';
-import { dailyReports, dailyReportItems, tickets, auditLogs, users } from '../../db/schema/index.js';
+import { dailyReports, dailyReportItems, tickets, auditLogs, users, projects } from '../../db/schema/index.js';
 import { eq, and, sql, gte, lte } from 'drizzle-orm';
 import { redis } from '../../cache/redis.js';
 import { validateTotalHours } from '../../utils/hoursValidator.js';
@@ -26,6 +26,31 @@ export class ReportService {
 
       let report;
       if (existing) {
+        // Retrieve old items to restore their hours to project totalHours
+        const oldItems = await tx.query.dailyReportItems.findMany({
+          where: eq(dailyReportItems.reportId, existing.reportId),
+        });
+        for (const item of oldItems) {
+          const tkt = await tx.query.tickets.findFirst({
+            where: eq(tickets.ticketId, item.ticketId),
+          });
+          if (tkt && tkt.projectId) {
+            const proj = await tx.query.projects.findFirst({
+              where: eq(projects.projectId, tkt.projectId),
+            });
+            if (proj) {
+              const currentTotal = Number(proj.totalHours || 0);
+              const restoredHours = Number(item.hoursSpent || 0);
+              await tx.update(projects)
+                .set({
+                  totalHours: (currentTotal + restoredHours).toFixed(2),
+                  updatedAt: new Date()
+                })
+                .where(eq(projects.projectId, proj.projectId));
+            }
+          }
+        }
+
         // Delete old items
         await tx.delete(dailyReportItems).where(eq(dailyReportItems.reportId, existing.reportId));
         report = existing;
@@ -49,6 +74,28 @@ export class ReportService {
           hoursSpent: String(item.hoursSpent),
         }))
       );
+
+      // Deduct the new hours spent from project totalHours
+      for (const item of items) {
+        const tkt = await tx.query.tickets.findFirst({
+          where: eq(tickets.ticketId, item.ticketId),
+        });
+        if (tkt && tkt.projectId) {
+          const proj = await tx.query.projects.findFirst({
+            where: eq(projects.projectId, tkt.projectId),
+          });
+          if (proj) {
+            const currentTotal = Number(proj.totalHours || 0);
+            const spentHours = Number(item.hoursSpent || 0);
+            await tx.update(projects)
+              .set({
+                totalHours: Math.max(0, currentTotal - spentHours).toFixed(2),
+                updatedAt: new Date()
+              })
+              .where(eq(projects.projectId, proj.projectId));
+          }
+        }
+      }
 
       // Set Redis dedup key
       if (redis.isOpen) {

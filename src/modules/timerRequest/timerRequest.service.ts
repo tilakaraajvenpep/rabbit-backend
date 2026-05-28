@@ -87,6 +87,8 @@ export class TimerRequestService {
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
       projectName: projects.projectName,
+      projectId: projects.projectId,
+      bufferHours: projects.bufferHours,
     })
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
@@ -201,16 +203,50 @@ export class TimerRequestService {
     });
     if (!old) throw new Error('Request not found');
 
+    const userWhoResponded = await db.query.users.findFirst({
+      where: eq(users.userId, userId),
+    });
+
+    if (approved) {
+      if (userWhoResponded?.role === 'TeamLead') {
+        const ticket = await db.query.tickets.findFirst({
+          where: eq(tickets.ticketId, old.ticketId),
+        });
+        if (!ticket) throw new Error('Ticket not found');
+
+        const proj = await db.query.projects.findFirst({
+          where: eq(projects.projectId, ticket.projectId),
+        });
+        if (!proj) throw new Error('Project not found');
+
+        const reqHours = Number(old.requestedHours || 0);
+        const availableBuffer = Number(proj.bufferHours || 0);
+
+        if (availableBuffer < reqHours) {
+          throw new Error(`Insufficient project buffer hours. You must forward this request to the Project Manager.`);
+        }
+
+        // Deduct approved hours from project's bufferHours
+        const newBuffer = (availableBuffer - reqHours).toFixed(2);
+        await db.update(projects)
+          .set({ bufferHours: newBuffer, updatedAt: new Date() })
+          .where(eq(projects.projectId, proj.projectId));
+      }
+    }
+
+    const status = approved ? 'Approved' : 'Rejected';
     const [request] = await db.update(timerRequests)
-      .set({ status: 'Rejected', comments, updatedAt: new Date() })
+      .set({ status, comments, updatedAt: new Date() })
       .where(and(eq(timerRequests.requestId, requestId), eq(timerRequests.tenantId, tenantId)))
       .returning();
 
     await NotificationService.createNotification({
       tenantId,
       userId: request.userId,
-      title: `Additional Hours Request Rejected`,
-      message: `Your additional hours request has been rejected. Comments: ${comments || 'None'}`,
+      title: approved ? `Additional Hours Request Approved` : `Additional Hours Request Rejected`,
+      message: approved
+        ? `Your additional hours request has been approved. Comments: ${comments || 'None'}`
+        : `Your additional hours request has been rejected. Comments: ${comments || 'None'}`,
       type: 'ticket',
     });
     return request;
@@ -236,6 +272,25 @@ export class TimerRequestService {
     const employee = await db.query.users.findFirst({ where: eq(users.userId, request.userId) });
 
     if (approved) {
+      // Find the project and sync/increase the totalHours
+      const ticket = await db.query.tickets.findFirst({
+        where: eq(tickets.ticketId, old.ticketId),
+      });
+      if (ticket) {
+        const proj = await db.query.projects.findFirst({
+          where: eq(projects.projectId, ticket.projectId),
+        });
+        if (proj) {
+          const newTotalHours = (Number(proj.totalHours || 0) + Number(old.requestedHours || 0)).toFixed(2);
+          await db.update(projects)
+            .set({
+              totalHours: newTotalHours,
+              updatedAt: new Date()
+            })
+            .where(eq(projects.projectId, proj.projectId));
+        }
+      }
+
       // Notify HR + PM to reassign quota
       const hrs = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'HR')) });
       const pms = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')) });
