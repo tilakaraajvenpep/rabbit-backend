@@ -341,4 +341,28 @@ export class TimerRequestService {
       .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'AccountsApproved')))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
+
+  static async getAllHistoryRequests(tenantId: number, userId: number, role: string) {
+    let whereClause;
+    if (role === 'Employee') {
+      whereClause = and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.userId, userId));
+    } else {
+      whereClause = eq(timerRequests.tenantId, tenantId);
+    }
+
+    return await db.select({
+      request: timerRequests,
+      employeeName: users.fullName,
+      ticketTitle: tickets.title,
+      ticketCode: tickets.ticketCode,
+      projectName: projects.projectName,
+      bufferHours: projects.bufferHours,
+    })
+      .from(timerRequests)
+      .leftJoin(users, eq(timerRequests.userId, users.userId))
+      .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
+      .leftJoin(projects, eq(tickets.projectId, projects.projectId))
+      .where(whereClause)
+      .orderBy(sql`${timerRequests.createdAt} DESC`);
+  }
 }

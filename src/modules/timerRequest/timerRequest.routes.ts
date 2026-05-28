@@ -8,6 +8,7 @@ router.use(authenticate);
 
 router.post('/', TimerRequestController.createRequest);
 router.get('/employee', TimerRequestController.getEmployeeRequests);
+router.get('/history', TimerRequestController.getAllHistoryRequests);
 router.get('/tl', TimerRequestController.getTLPendingRequests);
 router.get('/pm', TimerRequestController.getPMPendingRequests);
 router.get('/accounts', TimerRequestController.getAccountsPendingRequests);
