@@ -2,7 +2,6 @@ import { db } from '../../db/index.js';
 import { projects, auditLogs, users } from '../../db/schema/index.js';
 import { eq, and, or, inArray } from 'drizzle-orm';
 import { generateCode } from '../../utils/codeGenerator.js';
-import { emitToRoom } from '../../socket/socket.js';
 import { NotificationService } from '../notification/notification.service.js';
 
 export class ProjectService {
@@ -335,7 +334,6 @@ export class ProjectService {
     });
 
     // Notify
-    emitToRoom(`project:${projectId}`, 'project-status-updated', project);
 
     // Notify Team Lead if assigned
     try {
@@ -381,6 +379,7 @@ export class ProjectService {
       projects, 
       tickets, 
       dailyReportItems, 
+      timerRequests,
       costAnalysis, 
       costPhases, 
       scopeDocuments, 
@@ -388,7 +387,7 @@ export class ProjectService {
       auditLogs 
     } = await import('../../db/schema/index.js');
 
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // 1. Get the project details first for audit logging
       const project = await tx.query.projects.findFirst({
         where: and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId))
@@ -398,18 +397,20 @@ export class ProjectService {
         throw new Error('Project not found');
       }
 
-      // 2. Find and delete related daily report items (tied to project's tickets)
+      // 2. Find all tickets tied to this project
       const projectTickets = await tx.select({ ticketId: tickets.ticketId })
         .from(tickets)
         .where(eq(tickets.projectId, projectId));
       
       const ticketIds = projectTickets.map(t => t.ticketId);
       if (ticketIds.length > 0) {
+        // 3a. Delete daily report items linked to those tickets
         await tx.delete(dailyReportItems).where(inArray(dailyReportItems.ticketId, ticketIds));
-        // 3. Delete tickets
+        // 3b. Delete timer requests (additional hours requests) linked to those tickets
+        await tx.delete(timerRequests).where(inArray(timerRequests.ticketId, ticketIds));
+        // 3c. Delete tickets themselves
         await tx.delete(tickets).where(eq(tickets.projectId, projectId));
       } else {
-        // Also ensure tickets matching are deleted (even if array is empty, run delete just in case)
         await tx.delete(tickets).where(eq(tickets.projectId, projectId));
       }
 
@@ -446,9 +447,28 @@ export class ProjectService {
         oldData: project,
       });
 
-      emitToRoom(`project:${projectId}`, 'project-deleted', { projectId });
-
-      return { success: true };
+      return { success: true, projectName: project.projectName, projectCode: project.projectCode };
     });
+
+    // 10. Notify all tenant users about the deletion so their UIs refresh
+    try {
+      const allUsers = await db.query.users.findMany({
+        where: and(eq(users.tenantId, tenantId), eq(users.isDeleted, false)),
+      });
+      for (const u of allUsers) {
+        if (u.userId === userId) continue; // skip the deleting user (they already know)
+        await NotificationService.createNotification({
+          tenantId,
+          userId: u.userId,
+          title: `Project Deleted: ${result.projectName}`,
+          message: `The project "${result.projectName}" (${result.projectCode}) and all its tickets have been permanently deleted by the Sales team.`,
+          type: 'alert',
+        });
+      }
+    } catch (notifErr) {
+      console.error('Failed to send project deletion notifications:', notifErr);
+    }
+
+    return result;
   }
 }
