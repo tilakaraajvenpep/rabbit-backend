@@ -92,12 +92,10 @@ export class ProjectService {
     let roleFilter;
     if (role === 'Sales') {
       roleFilter = eq(projects.createdByUserId, userId);
-    } else if (role === 'Accounts') {
-      roleFilter = inArray(projects.status, ['PendingReview', 'ReturnedForRevision', 'ReturnedToAccounts', 'Approved']);
     } else if (role === 'TeamLead') {
       roleFilter = eq(projects.assignedTeamLeadId, userId);
     } else {
-      roleFilter = undefined; // ProjectManager, SuperAdmin, TenantAdmin, HR — see all
+      roleFilter = undefined; // ProjectManager, Accounts, SuperAdmin, TenantAdmin, HR — see all
     }
 
     const whereClause = roleFilter ? and(baseWhere, roleFilter) : baseWhere;
