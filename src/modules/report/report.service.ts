@@ -9,10 +9,12 @@ export class ReportService {
   static async submitDailyReport({ tenantId, userId, data }: any) {
     const { reportDate, items } = data;
 
-    // 1. Validate 8.5 hours
+    // 1. Validate hours
     if (!validateTotalHours(items)) {
-      throw new Error('Total hours must be exactly 8.5');
+      throw new Error('Total hours must be between 0 and 24 hours');
     }
+
+    const totalHoursSpent = items.reduce((acc: number, curr: any) => acc + (Number(curr.hoursSpent) || 0), 0);
 
     // 2. Clear duplicate check if any (since we allow updates now)
     const redisKey = `report:submitted:${tenantId}:${userId}:${reportDate}`;
@@ -53,14 +55,21 @@ export class ReportService {
 
         // Delete old items
         await tx.delete(dailyReportItems).where(eq(dailyReportItems.reportId, existing.reportId));
-        report = existing;
+        // Update report totalHours
+        await tx.update(dailyReports)
+          .set({
+            totalHours: totalHoursSpent.toFixed(2),
+            updatedAt: new Date()
+          })
+          .where(eq(dailyReports.reportId, existing.reportId));
+        report = { ...existing, totalHours: totalHoursSpent.toFixed(2) };
       } else {
         // Insert new Report
         const [insertedReport] = await tx.insert(dailyReports).values({
           tenantId,
           userId,
           reportDate,
-          totalHours: '8.50',
+          totalHours: totalHoursSpent.toFixed(2),
         }).returning();
         report = insertedReport;
       }
