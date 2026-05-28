@@ -14,8 +14,8 @@ router.get('/', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'S
 router.post('/', checkRole(['Sales']), projectController.createProject);
 router.get('/:id', projectController.getProjectById);
 router.put('/:id', checkRole(['Sales']), projectController.updateProject);
-router.put('/:id/:status', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'TenantAdmin']), projectController.updateProjectStatus); // legacy mapping if any
 router.put('/:id/status', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'TenantAdmin', 'HR']), projectController.updateProjectStatus);
+router.put('/:id/:status', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'TenantAdmin', 'HR']), projectController.updateProjectStatus); // legacy mapping if any
 router.delete('/:id', checkRole(['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin']), projectController.deleteProject);
 
 // Nested Routes
