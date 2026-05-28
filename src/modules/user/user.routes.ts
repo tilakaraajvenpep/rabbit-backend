@@ -31,6 +31,7 @@ router.get('/', authenticate, async (req: any, res) => {
     role: users.role,
     isActive: users.isActive,
     allocatedHours: users.allocatedHours,
+    prevAllocatedHours: users.prevAllocatedHours,
     costPerHour: users.costPerHour,
     teamLeadId: users.teamLeadId,
     dateOfJoining: users.dateOfJoining,
@@ -332,6 +333,7 @@ router.get('/me', authenticate, async (req: any, res, next) => {
       role: users.role,
       isActive: users.isActive,
       allocatedHours: users.allocatedHours,
+      prevAllocatedHours: users.prevAllocatedHours,
       teamLeadId: users.teamLeadId,
       createdAt: users.createdAt,
     }).from(users).where(and(eq(users.userId, userId), eq(users.tenantId, tenantId)));

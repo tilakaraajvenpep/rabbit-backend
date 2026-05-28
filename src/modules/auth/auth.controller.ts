@@ -100,7 +100,7 @@ export const me = async (req: Request, res: Response, next: NextFunction) => {
       where: eq(users.userId, jwtUser.userId),
       columns: {
         userId: true, fullName: true, email: true, role: true,
-        isActive: true, allocatedHours: true, tenantId: true, createdAt: true,
+        isActive: true, allocatedHours: true, prevAllocatedHours: true, tenantId: true, createdAt: true,
         teamLeadId: true,
       }
     });

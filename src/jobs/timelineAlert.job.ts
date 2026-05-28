@@ -42,9 +42,13 @@ export const initJobs = () => {
     logger.info('🔄 Running weekly work hours allocation reset...');
     try {
       const { users } = await import('../db/schema/index.js');
-      const { inArray } = await import('drizzle-orm');
+      const { inArray, sql } = await import('drizzle-orm');
       await db.update(users)
-        .set({ allocatedHours: '0.00', updatedAt: new Date() })
+        .set({ 
+          prevAllocatedHours: sql`CASE WHEN allocated_hours <> '0.00' THEN allocated_hours ELSE prev_allocated_hours END`,
+          allocatedHours: '0.00', 
+          updatedAt: new Date() 
+        })
         .where(inArray(users.role, ['Employee', 'TeamLead', 'ProjectManager']));
       logger.info('✅ Weekly work hours allocation reset completed.');
     } catch (err) {
