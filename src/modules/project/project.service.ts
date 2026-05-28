@@ -195,11 +195,19 @@ export class ProjectService {
     bufferHours?: any,
     budgetTable?: any,
     milestones?: any,
-    kanbanColumns?: any
+    kanbanColumns?: any,
+    assignedEmployeeIds?: any,
+    employeeAllocatedHours?: any
   ) {
     const oldProject = await this.getProjectById(projectId, tenantId);
     
     const updateData: any = { status, updatedAt: new Date() };
+    if (assignedEmployeeIds !== undefined) {
+      updateData.assignedEmployeeIds = assignedEmployeeIds;
+    }
+    if (employeeAllocatedHours !== undefined) {
+      updateData.employeeAllocatedHours = employeeAllocatedHours;
+    }
     if (assignedTeamLeadId !== undefined) {
       updateData.assignedTeamLeadId = assignedTeamLeadId;
     }
@@ -301,7 +309,7 @@ export class ProjectService {
               ticketCode,
               title: ticketTitle,
               description: ticketDescription,
-              estimatedHours: '8.00',
+              estimatedHours: '0.00',
               status: 'ToDo',
               priority: 'High',
               milestone: title,

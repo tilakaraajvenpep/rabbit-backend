@@ -24,4 +24,6 @@ export const updateProjectStatusSchema = z.object({
   budgetTable: z.any().optional(),
   milestones: z.any().optional(),
   kanbanColumns: z.any().optional(),
+  assignedEmployeeIds: z.any().optional(),
+  employeeAllocatedHours: z.any().optional(),
 });

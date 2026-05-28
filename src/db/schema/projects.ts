@@ -27,6 +27,8 @@ export const projects = pgTable('projects', {
   assignedProjectManagerId: integer('assigned_pm_id').references(() => users.userId),
   kanbanColumns: jsonb('kanban_columns'),
   projectCategory: varchar('project_category', { length: 255 }),
+  assignedEmployeeIds: jsonb('assigned_employee_ids'),
+  employeeAllocatedHours: jsonb('employee_allocated_hours'),
 },
 (table) => ({
   tenantIdx: index('projects_tenant_idx').on(table.tenantId),
