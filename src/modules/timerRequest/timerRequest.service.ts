@@ -346,6 +346,13 @@ export class TimerRequestService {
     let whereClause;
     if (role === 'Employee') {
       whereClause = and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.userId, userId));
+    } else if (role === 'TeamLead') {
+      const employees = await db.query.users.findMany({
+        where: and(eq(users.teamLeadId, userId), eq(users.tenantId, tenantId)),
+      });
+      const employeeIds = employees.map(e => e.userId);
+      if (employeeIds.length === 0) return [];
+      whereClause = and(eq(timerRequests.tenantId, tenantId), inArray(timerRequests.userId, employeeIds));
     } else {
       whereClause = eq(timerRequests.tenantId, tenantId);
     }
