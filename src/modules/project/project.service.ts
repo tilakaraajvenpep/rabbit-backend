@@ -282,6 +282,42 @@ export class ProjectService {
       .where(and(eq(projects.projectId, projectId), eq(projects.tenantId, tenantId)))
       .returning();
 
+    // Reassign tickets if Team Lead is changed
+    if (assignedTeamLeadId !== undefined && oldProject) {
+      const oldTLId = oldProject.assignedTeamLeadId;
+      const newTLId = assignedTeamLeadId;
+
+      if (newTLId !== oldTLId) {
+        try {
+          const { tickets } = await import('../../db/schema/index.js');
+          const { eq, and, or, isNull } = await import('drizzle-orm');
+          
+          const whereCondition = oldTLId 
+            ? and(
+                eq(tickets.projectId, projectId),
+                or(
+                  eq(tickets.assignedToUserId, oldTLId),
+                  isNull(tickets.assignedToUserId)
+                )
+              )
+            : and(
+                eq(tickets.projectId, projectId),
+                isNull(tickets.assignedToUserId)
+              );
+
+          if (newTLId) {
+            const reassignedTickets = await db.update(tickets)
+              .set({ assignedToUserId: newTLId, updatedAt: new Date() })
+              .where(whereCondition)
+              .returning();
+            console.log(`[Reassign] Reassigned ${reassignedTickets.length} tickets from old TL ${oldTLId} to new TL ${newTLId} for project ${projectId}`);
+          }
+        } catch (ticketReassignErr) {
+          console.error('❌ Failed to reassign tickets to new Team Lead:', ticketReassignErr);
+        }
+      }
+    }
+
     // Automatically generate tickets when project is approved
     if (status === 'Approved' && oldProject?.status === 'PendingPMApproval') {
       try {
