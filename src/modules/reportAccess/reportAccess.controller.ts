@@ -33,7 +33,16 @@ export const getMyRequests = async (req: Request, res: Response, next: NextFunct
 export const getPendingRequests = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
-    const data = await ReportAccessService.getPendingRequests(user.tenantId);
+    let data;
+    if (user.role === 'TeamLead') {
+      data = await ReportAccessService.getTLPendingRequests(user.tenantId, user.userId);
+    } else if (user.role === 'ProjectManager') {
+      data = await ReportAccessService.getPMPendingRequests(user.tenantId);
+    } else if (user.role === 'Accounts') {
+      data = await ReportAccessService.getAccountsPendingRequests(user.tenantId);
+    } else {
+      data = await ReportAccessService.getPendingRequests(user.tenantId);
+    }
     return success(res, data);
   } catch (err) { next(err); }
 };
@@ -47,6 +56,26 @@ export const respondToRequest = async (req: Request, res: Response, next: NextFu
 
     const result = await ReportAccessService.respondToRequest(requestId, user.tenantId, user.userId, !!approved, comments);
     return success(res, result, `Request ${approved ? 'approved' : 'rejected'} successfully`);
+  } catch (err) { next(err); }
+};
+
+export const forwardToPM = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const requestId = Number(req.params.id);
+    const { comments } = req.body;
+    const result = await ReportAccessService.forwardToPM(requestId, user.tenantId, comments);
+    return success(res, result, 'Request forwarded to Project Manager successfully');
+  } catch (err) { next(err); }
+};
+
+export const forwardToAccounts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const requestId = Number(req.params.id);
+    const { comments } = req.body;
+    const result = await ReportAccessService.forwardToAccounts(requestId, user.tenantId, comments);
+    return success(res, result, 'Request forwarded to Accounts successfully');
   } catch (err) { next(err); }
 };
 

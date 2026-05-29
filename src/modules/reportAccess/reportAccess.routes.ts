@@ -6,7 +6,9 @@ import {
   getMyRequests,
   getPendingRequests,
   respondToRequest,
-  checkAccess
+  checkAccess,
+  forwardToPM,
+  forwardToAccounts
 } from './reportAccess.controller.js';
 
 const router = Router();
@@ -20,10 +22,14 @@ router.get('/my', authenticate, checkRole(['Employee', 'TeamLead']), getMyReques
 // Employee/TL checks if approved for a specific date
 router.get('/check', authenticate, checkRole(['Employee', 'TeamLead']), checkAccess);
 
-// HR/PM/TL views all pending requests
-router.get('/pending', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead']), getPendingRequests);
+// HR/PM/TL/Accounts views pending requests (dynamically filtered by controller)
+router.get('/pending', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead', 'Accounts']), getPendingRequests);
 
-// HR/PM/TL approves or rejects a request
-router.patch('/:id/respond', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead']), respondToRequest);
+// HR/PM/TL/Accounts approves or rejects a request
+router.patch('/:id/respond', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead', 'Accounts']), respondToRequest);
+
+// Forwarding steps in the linear pipeline
+router.patch('/:id/forward-pm', authenticate, checkRole(['TeamLead']), forwardToPM);
+router.patch('/:id/forward-accounts', authenticate, checkRole(['ProjectManager']), forwardToAccounts);
 
 export default router;
