@@ -288,7 +288,7 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     // Cascade delete user associations to avoid foreign key violations:
-    const { dailyReports, dailyReportItems, tickets, projects, auditLogs, leaves } = await import('../../db/schema/index.js');
+    const { dailyReports, dailyReportItems, tickets, projects, auditLogs, leaves, timerRequests, reportAccessRequests, notifications, alerts } = await import('../../db/schema/index.js');
     
     // 1. Delete daily report items associated with the user's reports
     const userReports = await db.select({ reportId: dailyReports.reportId }).from(dailyReports).where(eq(dailyReports.userId, userIdInt));
@@ -304,6 +304,7 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
 
     // 4. Clear project assignments/creations
     await db.update(projects).set({ assignedTeamLeadId: null }).where(eq(projects.assignedTeamLeadId, userIdInt));
+    await db.update(projects).set({ assignedProjectManagerId: null }).where(eq(projects.assignedProjectManagerId, userIdInt));
     await db.update(projects).set({ createdByUserId: null }).where(eq(projects.createdByUserId, userIdInt));
 
     // 5. Clear audit log references
@@ -311,6 +312,22 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
 
     // 5.5 Delete associated leaves
     await db.delete(leaves).where(eq(leaves.userId, userIdInt));
+
+    // 5.6 Delete associated timer requests
+    await db.delete(timerRequests).where(eq(timerRequests.userId, userIdInt));
+
+    // 5.7 Delete report access requests
+    await db.delete(reportAccessRequests).where(eq(reportAccessRequests.userId, userIdInt));
+    await db.update(reportAccessRequests).set({ reviewedByUserId: null }).where(eq(reportAccessRequests.reviewedByUserId, userIdInt));
+
+    // 5.8 Delete notifications
+    await db.delete(notifications).where(eq(notifications.userId, userIdInt));
+
+    // 5.9 Clear alert creators
+    await db.update(alerts).set({ createdByUserId: null }).where(eq(alerts.createdByUserId, userIdInt));
+
+    // 5.10 Clear team lead references for reporting employees
+    await db.update(users).set({ teamLeadId: null }).where(eq(users.teamLeadId, userIdInt));
 
     // 6. Hard delete the user
     await db.delete(users).where(eq(users.userId, userIdInt));
