@@ -19,7 +19,24 @@ export class ReportAccessService {
         throw new Error('You already have an approved request to report for this date.');
       }
       if (existing.status === 'Pending') {
-        throw new Error('You already have a pending request for this date. Please wait for approval.');
+        const [updated] = await db.update(reportAccessRequests)
+          .set({ reason, updatedAt: new Date() })
+          .where(eq(reportAccessRequests.requestId, existing.requestId))
+          .returning();
+        return updated;
+      }
+      if (existing.status === 'Rejected') {
+        const [updated] = await db.update(reportAccessRequests)
+          .set({
+            status: 'Pending',
+            reason,
+            reviewedByUserId: null,
+            reviewerComments: null,
+            updatedAt: new Date()
+          })
+          .where(eq(reportAccessRequests.requestId, existing.requestId))
+          .returning();
+        return updated;
       }
     }
 
