@@ -35,10 +35,18 @@ export class DocumentService {
   }
 
   static async uploadDocument({ tenantId, projectId, userId, file, documentCategory }: any) {
-    // Count existing docs for versioning
+    const category = documentCategory || 'scope';
+    // Count existing docs of the same category for versioning
     const existingDocs = await db.select({ count: sql<number>`count(*)` })
       .from(scopeDocuments)
-      .where(and(eq(scopeDocuments.projectId, projectId), eq(scopeDocuments.tenantId, tenantId)));
+      .where(
+        and(
+          eq(scopeDocuments.projectId, projectId),
+          eq(scopeDocuments.tenantId, tenantId),
+          eq(scopeDocuments.documentCategory, category),
+          eq(scopeDocuments.isDeleted, false)
+        )
+      );
     
     const version = Number(existingDocs[0].count) + 1;
 
@@ -60,7 +68,7 @@ export class DocumentService {
       fileSize: file.size,
       version,
       status: 'Pending',
-      documentCategory: documentCategory || 'scope',
+      documentCategory: category,
       extractedText,
     }).returning();
 
