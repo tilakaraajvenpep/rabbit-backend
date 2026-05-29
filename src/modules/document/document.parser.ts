@@ -133,12 +133,17 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
           if (!isNaN(d.getTime())) parsedDate = d.toISOString();
         } catch { /* ignore */ }
 
+        const hrsRegex = /(\d+)\s*(?:hrs|hours|hour|h\b)/i;
+        const hrsMatch = cleanBlock.match(hrsRegex);
+        const hours = hrsMatch ? Number(hrsMatch[1]) : undefined;
+
         milestones.push({
           key: milestoneKey++,
           title: titleRaw,
           date: parsedDate,
           amount,
-          description: descRaw || titleRaw
+          description: descRaw || titleRaw,
+          hours
         });
       }
     }
