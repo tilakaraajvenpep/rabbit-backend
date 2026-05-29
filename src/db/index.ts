@@ -48,11 +48,49 @@ export async function connectDB() {
 
     // Reconcile PRJ-6092 project and audit logs data
     await reconcileProjectData();
+    
+    // Reconcile document versions
+    await reconcileDocumentVersions();
   } catch (error) {
     console.error('❌ Database Sync / Connection Failed:', error);
     if (isProduction) {
       process.exit(1);
     }
+  }
+}
+
+export async function reconcileDocumentVersions() {
+  try {
+    console.log('🔄 Reconciling document versions for budget_milestones category...');
+    const budgetDocs = await db.query.scopeDocuments.findMany({
+      where: eq(schema.scopeDocuments.documentCategory, 'budget_milestones'),
+      orderBy: (docs, { asc }) => [asc(docs.createdAt)],
+    });
+
+    const projectsMap = new Map<number, typeof budgetDocs>();
+    for (const doc of budgetDocs) {
+      const pId = doc.projectId;
+      if (!projectsMap.has(pId)) {
+        projectsMap.set(pId, []);
+      }
+      projectsMap.get(pId)!.push(doc);
+    }
+
+    for (const [projectId, docs] of projectsMap.entries()) {
+      let currentVersion = 1;
+      for (const doc of docs) {
+        if (doc.version !== currentVersion) {
+          console.log(`  🔄 Updating document ID ${doc.documentId} (Project ${projectId}) version from ${doc.version} to ${currentVersion}`);
+          await db.update(schema.scopeDocuments)
+            .set({ version: currentVersion })
+            .where(eq(schema.scopeDocuments.documentId, doc.documentId));
+        }
+        currentVersion++;
+      }
+    }
+    console.log('✅ Document versions reconciliation complete!');
+  } catch (err) {
+    console.error('❌ Failed to reconcile document versions:', err);
   }
 }
 
