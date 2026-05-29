@@ -59,8 +59,12 @@ export class AlertService {
     // Dedup check via Redis
     const dedupKey = `alert:${tenantId}:${resolvedProjectId}:${type}:${severity}`;
     if (redis.isOpen) {
-      const exists = await redis.get(dedupKey);
-      if (exists) return null;
+      try {
+        const exists = await redis.get(dedupKey);
+        if (exists) return null;
+      } catch (redisErr) {
+        console.warn('Redis get failed in createAlert (ignored):', redisErr);
+      }
     }
 
     const [alert] = await db.insert(alerts).values({
@@ -72,7 +76,11 @@ export class AlertService {
     }).returning();
 
     if (redis.isOpen) {
-      await redis.set(dedupKey, '1', { EX: 86400 });
+      try {
+        await redis.set(dedupKey, '1', { EX: 86400 });
+      } catch (redisErr) {
+        console.warn('Redis set failed in createAlert (ignored):', redisErr);
+      }
     }
 
     emitToRoom(`pm-ops:${tenantId}`, 'new-alert', alert);

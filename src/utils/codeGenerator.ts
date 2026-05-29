@@ -5,7 +5,12 @@ export const generateCode = async (prefix: string, tenantId: number) => {
   
   let seq = 0;
   if (redis.isOpen) {
-    seq = await redis.incr(key);
+    try {
+      seq = await redis.incr(key);
+    } catch (redisErr) {
+      console.warn('Redis incr failed in generateCode (falling back to random):', redisErr);
+      seq = Math.floor(Math.random() * 10000);
+    }
   } else {
     // Fallback if Redis is down (simplified for dev)
     // In prod, Redis is mandatory for unique sequential codes

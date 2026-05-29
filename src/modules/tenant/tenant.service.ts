@@ -9,8 +9,12 @@ export class TenantService {
     
     // Check Cache
     if (redis.isOpen) {
-      const cached = await redis.get(cacheKey);
-      if (cached) return JSON.parse(cached);
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+      } catch (redisErr) {
+        console.warn('Redis get failed in resolveTenant (ignored):', redisErr);
+      }
     }
 
     // Query DB
@@ -32,9 +36,13 @@ export class TenantService {
 
     // Cache for 5 minutes
     if (redis.isOpen) {
-      await redis.set(cacheKey, JSON.stringify(tenant), {
-        EX: 300,
-      });
+      try {
+        await redis.set(cacheKey, JSON.stringify(tenant), {
+          EX: 300,
+        });
+      } catch (redisErr) {
+        console.warn('Redis set failed in resolveTenant (ignored):', redisErr);
+      }
     }
 
     return tenant;

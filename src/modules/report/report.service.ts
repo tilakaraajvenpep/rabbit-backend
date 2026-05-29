@@ -61,7 +61,11 @@ export class ReportService {
 
       // Set Redis dedup key
       if (redis.isOpen) {
-        await redis.set(redisKey, '1', { EX: 86400 });
+        try {
+          await redis.set(redisKey, '1', { EX: 86400 });
+        } catch (redisErr) {
+          console.warn('Redis set failed in submitDailyReport (ignored):', redisErr);
+        }
       }
 
       // Notify TeamLead room (simplified)
