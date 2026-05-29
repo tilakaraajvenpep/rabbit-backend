@@ -11,7 +11,7 @@ export class ReportService {
 
     // 1. Validate hours
     if (!validateTotalHours(items)) {
-      const err = new Error('Total hours must be between 0 and 24 hours');
+      const err = new Error('Total hours must be greater than 0');
       (err as any).status = 400;
       throw err;
     }
