@@ -291,15 +291,14 @@ export class TimerRequestService {
         }
       }
 
-      // Notify HR + PM to reassign quota
+      // Notify HR to update time
       const hrs = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'HR')) });
-      const pms = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')) });
-      for (const r of [...hrs, ...pms]) {
+      for (const hr of hrs) {
         await NotificationService.createNotification({
           tenantId,
-          userId: r.userId,
-          title: `Accounts Approved Extra Hours — Please Reassign Quota for ${employee?.fullName}`,
-          message: `Accounts approved ${request.requestedHours}h extra for "${employee?.fullName}". Update their daily quota in Hour Allocation so they can submit EOD.`,
+          userId: hr.userId,
+          title: `Accounts Approved Extra Hours — Please Update Time for ${employee?.fullName}`,
+          message: `Accounts approved ${request.requestedHours}h extra for "${employee?.fullName}". Please update their allocated hours so they can submit EOD.`,
           type: 'alert',
         });
       }
@@ -308,7 +307,7 @@ export class TimerRequestService {
         tenantId,
         userId: request.userId,
         title: `Additional Hours Approved by Accounts`,
-        message: `Accounts approved your additional hours request. HR/PM will update your daily quota shortly so you can submit your EOD.`,
+        message: `Accounts approved your additional hours request. HR will update your allocated hours shortly so you can submit your EOD.`,
         type: 'ticket',
       });
     } else {
