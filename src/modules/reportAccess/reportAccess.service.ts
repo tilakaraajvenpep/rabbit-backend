@@ -332,4 +332,44 @@ export class ReportAccessService {
     });
     return !!approved;
   }
+
+  static async getAllHistoryRequests(tenantId: number, userId: number, role: string) {
+    let whereClause;
+    if (role === 'TeamLead') {
+      const employees = await db.query.users.findMany({
+        where: and(eq(users.teamLeadId, userId), eq(users.tenantId, tenantId)),
+      });
+      const employeeIds = employees.map(e => e.userId);
+      if (employeeIds.length === 0) return [];
+      whereClause = and(
+        eq(reportAccessRequests.tenantId, tenantId),
+        inArray(reportAccessRequests.userId, employeeIds),
+        eq(reportAccessRequests.isDeleted, false)
+      );
+    } else {
+      whereClause = and(
+        eq(reportAccessRequests.tenantId, tenantId),
+        eq(reportAccessRequests.isDeleted, false)
+      );
+    }
+
+    return await db.select({
+      requestId: reportAccessRequests.requestId,
+      tenantId: reportAccessRequests.tenantId,
+      userId: reportAccessRequests.userId,
+      targetDate: reportAccessRequests.targetDate,
+      reason: reportAccessRequests.reason,
+      status: reportAccessRequests.status,
+      reviewedByUserId: reportAccessRequests.reviewedByUserId,
+      reviewerComments: reportAccessRequests.reviewerComments,
+      createdAt: reportAccessRequests.createdAt,
+      updatedAt: reportAccessRequests.updatedAt,
+      employeeName: users.fullName,
+      employeeEmail: users.email
+    })
+      .from(reportAccessRequests)
+      .leftJoin(users, eq(reportAccessRequests.userId, users.userId))
+      .where(whereClause)
+      .orderBy(sql`${reportAccessRequests.createdAt} DESC`);
+  }
 }

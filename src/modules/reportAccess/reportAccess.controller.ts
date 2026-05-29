@@ -88,3 +88,11 @@ export const checkAccess = async (req: Request, res: Response, next: NextFunctio
     return success(res, { hasAccess, date });
   } catch (err) { next(err); }
 };
+
+export const getHistoryRequests = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const data = await ReportAccessService.getAllHistoryRequests(user.tenantId, user.userId, user.role);
+    return success(res, data);
+  } catch (err) { next(err); }
+};

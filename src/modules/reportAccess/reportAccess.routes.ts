@@ -8,7 +8,8 @@ import {
   respondToRequest,
   checkAccess,
   forwardToPM,
-  forwardToAccounts
+  forwardToAccounts,
+  getHistoryRequests
 } from './reportAccess.controller.js';
 
 const router = Router();
@@ -24,6 +25,9 @@ router.get('/check', authenticate, checkRole(['Employee', 'TeamLead']), checkAcc
 
 // HR/PM/TL/Accounts views pending requests (dynamically filtered by controller)
 router.get('/pending', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead', 'Accounts']), getPendingRequests);
+
+// Get historical logs of requests
+router.get('/history', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead', 'Accounts']), getHistoryRequests);
 
 // HR/PM/TL/Accounts approves or rejects a request
 router.patch('/:id/respond', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead', 'Accounts']), respondToRequest);
