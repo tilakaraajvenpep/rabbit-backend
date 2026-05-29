@@ -99,6 +99,13 @@
       "when": 1779962099087,
       "tag": "0013_closed_devos",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1780047214041,
+      "tag": "0014_wise_the_liberteens",
+      "breakpoints": true
     }
   ]
 }
