@@ -1,6 +1,7 @@
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants.js';
 import { projects } from './projects.js';
+import { users } from './users.js';
 
 export const alerts = pgTable('alerts', {
   alertId: serial('alert_id').primaryKey(),
@@ -12,6 +13,7 @@ export const alerts = pgTable('alerts', {
   isAcknowledged: boolean('is_acknowledged').default(false),
   acknowledgedAt: timestamp('acknowledged_at'),
   pmComment: text('pm_comment'),
+  createdByUserId: integer('created_by_user_id').references(() => users.userId),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),

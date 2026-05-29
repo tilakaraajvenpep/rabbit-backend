@@ -36,7 +36,8 @@ export const createAlert = async (req: Request, res: Response, next: NextFunctio
       projectId,
       type,
       severity,
-      message
+      message,
+      createdByUserId: user.userId
     });
     
     return success(res, alert, 'Alert raised successfully', 201);

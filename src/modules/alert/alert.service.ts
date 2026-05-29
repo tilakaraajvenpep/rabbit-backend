@@ -9,10 +9,12 @@ export class AlertService {
   static async getAlerts(tenantId: number) {
     const results = await db.select({
       alert: alerts,
-      projectName: projects.projectName
+      projectName: projects.projectName,
+      createdByName: users.fullName
     })
       .from(alerts)
       .leftJoin(projects, eq(alerts.projectId, projects.projectId))
+      .leftJoin(users, eq(alerts.createdByUserId, users.userId))
       .where(and(
         eq(alerts.tenantId, tenantId), 
         eq(alerts.isDeleted, false),
@@ -22,7 +24,8 @@ export class AlertService {
 
     return results.map(r => ({
       ...r.alert,
-      projectName: r.projectName
+      projectName: r.projectName,
+      createdByName: r.createdByName
     }));
   }
 
@@ -49,7 +52,7 @@ export class AlertService {
     return alert;
   }
 
-  static async createAlert({ tenantId, projectId, type, severity, message }: any) {
+  static async createAlert({ tenantId, projectId, type, severity, message, createdByUserId }: any) {
     let resolvedProjectId = typeof projectId === 'string' ? parseInt(projectId) : Number(projectId);
     if (!resolvedProjectId || isNaN(resolvedProjectId)) {
       const [firstProject] = await db.select().from(projects).where(eq(projects.tenantId, tenantId)).limit(1);
@@ -73,6 +76,7 @@ export class AlertService {
       type,
       severity,
       message,
+      createdByUserId,
     }).returning();
 
     if (redis.isOpen) {
