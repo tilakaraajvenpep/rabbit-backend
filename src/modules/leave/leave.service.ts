@@ -264,7 +264,8 @@ export class LeaveService {
           projectId: resolvedProjectId,
           type: 'Leave Alert',
           severity: 'Medium',
-          message: `${autoApprove ? '[Auto-Approved] ' : ''}Leave: ${employee.fullName} — ${typeLabel} on ${dateRangeStr}. Reason: ${reason || 'N/A'}`
+          message: `${autoApprove ? '[Auto-Approved] ' : ''}Leave: ${employee.fullName} — ${typeLabel} on ${dateRangeStr}. Reason: ${reason || 'N/A'}`,
+          createdByUserId: userId
         });
       } catch (alertErr) {
         console.error('Failed to insert leave alert:', alertErr);
