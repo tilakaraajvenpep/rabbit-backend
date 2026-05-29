@@ -274,8 +274,8 @@ router.delete('/:id', authenticate, async (req: any, res, next) => {
     const { tenantId, role: userRole } = req.user;
     const userIdInt = parseInt(id);
 
-    // Only TenantAdmin, ProjectManager or SuperAdmin can delete users
-    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
+    // Only TenantAdmin, ProjectManager, HR or SuperAdmin can delete users
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager' && userRole !== 'HR') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
