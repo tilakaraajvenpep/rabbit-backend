@@ -111,7 +111,7 @@ export class ReportAccessService {
       .leftJoin(users, eq(reportAccessRequests.userId, users.userId))
       .where(and(
         eq(reportAccessRequests.tenantId, tenantId),
-        inArray(reportAccessRequests.status, ['Pending', 'PendingTL', 'PendingPM', 'PendingAccounts']),
+        inArray(reportAccessRequests.status, ['Pending', 'PendingTL', 'PendingPM', 'PendingHR', 'PendingAccounts']),
         eq(reportAccessRequests.isDeleted, false)
       ))
       .orderBy(sql`${reportAccessRequests.createdAt} DESC`);
@@ -176,7 +176,7 @@ export class ReportAccessService {
       .orderBy(sql`${reportAccessRequests.createdAt} DESC`);
   }
 
-  static async getAccountsPendingRequests(tenantId: number) {
+  static async getHRPendingRequests(tenantId: number) {
     return await db.select({
       requestId: reportAccessRequests.requestId,
       tenantId: reportAccessRequests.tenantId,
@@ -195,7 +195,7 @@ export class ReportAccessService {
       .leftJoin(users, eq(reportAccessRequests.userId, users.userId))
       .where(and(
         eq(reportAccessRequests.tenantId, tenantId),
-        eq(reportAccessRequests.status, 'PendingAccounts'),
+        eq(reportAccessRequests.status, 'PendingHR'),
         eq(reportAccessRequests.isDeleted, false)
       ))
       .orderBy(sql`${reportAccessRequests.createdAt} DESC`);
@@ -233,7 +233,7 @@ export class ReportAccessService {
     return updated;
   }
 
-  static async forwardToAccounts(requestId: number, tenantId: number, comments?: string) {
+  static async forwardToHR(requestId: number, tenantId: number, comments?: string) {
     const old = await db.query.reportAccessRequests.findFirst({
       where: and(eq(reportAccessRequests.requestId, requestId), eq(reportAccessRequests.tenantId, tenantId))
     });
@@ -245,7 +245,7 @@ export class ReportAccessService {
 
     const [updated] = await db.update(reportAccessRequests)
       .set({
-        status: 'PendingAccounts',
+        status: 'PendingHR',
         reviewerComments: combinedComments,
         updatedAt: new Date()
       })
@@ -253,14 +253,14 @@ export class ReportAccessService {
       .returning();
 
     const employee = await db.query.users.findFirst({ where: eq(users.userId, old.userId) });
-    const accounts = await db.query.users.findMany({
-      where: and(eq(users.tenantId, tenantId), eq(users.role, 'Accounts'), eq(users.isDeleted, false))
+    const hrs = await db.query.users.findMany({
+      where: and(eq(users.tenantId, tenantId), eq(users.role, 'HR'), eq(users.isDeleted, false))
     });
-    for (const acc of accounts) {
+    for (const hr of hrs) {
       await NotificationService.createNotification({
         tenantId,
-        userId: acc.userId,
-        title: `Report Access Request Forwarded to Accounts: ${employee?.fullName}`,
+        userId: hr.userId,
+        title: `Report Access Request Forwarded to HR: ${employee?.fullName}`,
         message: `Project Manager forwarded a report access request for ${old.targetDate} from "${employee?.fullName}". Notes: ${comments || 'None'}`,
         type: 'alert'
       }).catch(() => {});
@@ -291,22 +291,6 @@ export class ReportAccessService {
         eq(reportAccessRequests.tenantId, tenantId)
       ))
       .returning();
-
-    const employee = await db.query.users.findFirst({ where: eq(users.userId, existing.userId) });
-
-    // If approved, notify HR to update allocated hours
-    if (approved) {
-      const hrs = await db.query.users.findMany({ where: and(eq(users.tenantId, tenantId), eq(users.role, 'HR'), eq(users.isDeleted, false)) });
-      for (const hr of hrs) {
-        await NotificationService.createNotification({
-          tenantId,
-          userId: hr.userId,
-          title: `Report Access Approved — Please Update Time for ${employee?.fullName}`,
-          message: `Accounts approved EOD report access for ${employee?.fullName} on ${existing.targetDate}. Please update their allocated hours so they can submit EOD.`,
-          type: 'alert',
-        }).catch(() => {});
-      }
-    }
 
     // Notify employee
     await NotificationService.createNotification({

@@ -38,8 +38,8 @@ export const getPendingRequests = async (req: Request, res: Response, next: Next
       data = await ReportAccessService.getTLPendingRequests(user.tenantId, user.userId);
     } else if (user.role === 'ProjectManager') {
       data = await ReportAccessService.getPMPendingRequests(user.tenantId);
-    } else if (user.role === 'Accounts') {
-      data = await ReportAccessService.getAccountsPendingRequests(user.tenantId);
+    } else if (user.role === 'HR') {
+      data = await ReportAccessService.getHRPendingRequests(user.tenantId);
     } else {
       data = await ReportAccessService.getPendingRequests(user.tenantId);
     }
@@ -69,13 +69,13 @@ export const forwardToPM = async (req: Request, res: Response, next: NextFunctio
   } catch (err) { next(err); }
 };
 
-export const forwardToAccounts = async (req: Request, res: Response, next: NextFunction) => {
+export const forwardToHR = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
     const requestId = Number(req.params.id);
     const { comments } = req.body;
-    const result = await ReportAccessService.forwardToAccounts(requestId, user.tenantId, comments);
-    return success(res, result, 'Request forwarded to Accounts successfully');
+    const result = await ReportAccessService.forwardToHR(requestId, user.tenantId, comments);
+    return success(res, result, 'Request forwarded to HR successfully');
   } catch (err) { next(err); }
 };
 

@@ -8,7 +8,7 @@ import {
   respondToRequest,
   checkAccess,
   forwardToPM,
-  forwardToAccounts,
+  forwardToHR,
   getHistoryRequests
 } from './reportAccess.controller.js';
 
@@ -34,6 +34,6 @@ router.patch('/:id/respond', authenticate, checkRole(['HR', 'ProjectManager', 'T
 
 // Forwarding steps in the linear pipeline
 router.patch('/:id/forward-pm', authenticate, checkRole(['TeamLead']), forwardToPM);
-router.patch('/:id/forward-accounts', authenticate, checkRole(['ProjectManager']), forwardToAccounts);
+router.patch('/:id/forward-hr', authenticate, checkRole(['ProjectManager']), forwardToHR);
 
 export default router;
