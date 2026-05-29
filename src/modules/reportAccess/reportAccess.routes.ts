@@ -20,10 +20,10 @@ router.get('/my', authenticate, checkRole(['Employee', 'TeamLead']), getMyReques
 // Employee/TL checks if approved for a specific date
 router.get('/check', authenticate, checkRole(['Employee', 'TeamLead']), checkAccess);
 
-// HR/PM views all pending requests
-router.get('/pending', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin']), getPendingRequests);
+// HR/PM/TL views all pending requests
+router.get('/pending', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead']), getPendingRequests);
 
-// HR/PM approves or rejects a request
-router.patch('/:id/respond', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin']), respondToRequest);
+// HR/PM/TL approves or rejects a request
+router.patch('/:id/respond', authenticate, checkRole(['HR', 'ProjectManager', 'TenantAdmin', 'SuperAdmin', 'TeamLead']), respondToRequest);
 
 export default router;
