@@ -137,6 +137,18 @@ export class TicketService {
 
     if (!oldTicket) throw new Error('Ticket not found');
 
+    // Restrict moving ticket to Done for Employees unless approved by TL
+    if (status === 'Done') {
+      const userObj = await db.query.users.findFirst({
+        where: eq(users.userId, userId)
+      });
+      if (userObj && userObj.role === 'Employee') {
+        if (!oldTicket.approvedForDone) {
+          throw new Error('You can move a ticket to Done only after your Team Leader gives permission/approval.');
+        }
+      }
+    }
+
     // Allow any valid status value - dynamic check based on project configured Kanban columns
     let validStatuses = ['ToDo', 'InProgress', 'InReview', 'Done'];
     if (oldTicket.projectId) {
@@ -296,6 +308,7 @@ export class TicketService {
     if (data.estimatedHours !== undefined) updateData.estimatedHours = String(data.estimatedHours);
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     if (data.assignedToUserId !== undefined) updateData.assignedToUserId = data.assignedToUserId;
+    if (data.approvedForDone !== undefined) updateData.approvedForDone = data.approvedForDone;
 
     const [ticket] = await db.update(tickets)
       .set(updateData)
