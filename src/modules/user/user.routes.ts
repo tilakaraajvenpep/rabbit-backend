@@ -244,8 +244,8 @@ router.put('/:id/team-lead', authenticate, async (req: any, res, next) => {
     const { teamLeadId } = req.body;
     const { tenantId, role: userRole } = req.user;
 
-    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager') {
-      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager or SuperAdmin can update team lead' });
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager' && userRole !== 'HR') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, HR or SuperAdmin can update team lead' });
     }
 
     let whereClause = eq(users.userId, parseInt(id));
