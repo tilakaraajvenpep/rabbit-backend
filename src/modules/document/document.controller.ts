@@ -35,8 +35,9 @@ export const getDocuments = async (req: Request, res: Response, next: NextFuncti
     const projectId = parseInt(req.params.id);
     let docs = await DocumentService.getDocumentsByProject(projectId, user.tenantId);
     
-    // Scope document is visible only to Team Lead and Project Manager (plus Admin roles)
-    if (!['TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin'].includes(user.role)) {
+    // Scope document visible to the uploader (Sales), plus privileged roles
+    const canViewScopeDocs = ['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin'].includes(user.role);
+    if (!canViewScopeDocs) {
       docs = docs.filter(doc => doc.documentCategory !== 'scope');
     }
     
@@ -45,6 +46,7 @@ export const getDocuments = async (req: Request, res: Response, next: NextFuncti
     next(err);
   }
 };
+
 
 export const approveDocument = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -81,7 +83,8 @@ export const downloadDocument = async (req: Request, res: Response, next: NextFu
     if (!doc) return error(res, 'Document not found', 404);
 
     // Enforce role visibility on scope documents
-    if (doc.documentCategory === 'scope' && !['TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin'].includes(user.role)) {
+    const canAccessScopeDoc = ['Sales', 'Accounts', 'TeamLead', 'ProjectManager', 'SuperAdmin', 'TenantAdmin'].includes(user.role);
+    if (doc.documentCategory === 'scope' && !canAccessScopeDoc) {
       return error(res, 'Forbidden: You do not have permission to view or download the scope document.', 403);
     }
 
