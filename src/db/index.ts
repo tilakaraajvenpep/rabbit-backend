@@ -45,6 +45,16 @@ export async function connectDB() {
       console.warn('⚠️ Drizzle migrations failed (ignored to continue startup):', migError);
     }
 
+    // Ensure new columns exist before seeding or running queries
+    try {
+      console.log('🔄 Running manual alterations to ensure columns exist...');
+      await db.execute(sql`ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "standard_cost" numeric(10, 2) DEFAULT '500.00';`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "cost_calculation_type" varchar(50) DEFAULT 'custom';`);
+      console.log('✅ Manual database alterations completed successfully!');
+    } catch (alterError) {
+      console.warn('⚠️ Manual database alterations failed:', alterError);
+    }
+
     // Run idempotent database seeding
     console.log('🌱 Checking & applying database seeding...');
     await seedDB();
