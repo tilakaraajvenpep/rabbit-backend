@@ -48,8 +48,37 @@ export async function connectDB() {
     // Ensure new columns exist before seeding or running queries
     try {
       console.log('🔄 Running manual alterations to ensure columns exist...');
+      
+      // Tenants alterations
       await db.execute(sql`ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "standard_cost" numeric(10, 2) DEFAULT '500.00';`);
+
+      // Users alterations
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "cost_per_hour" numeric(10, 2) DEFAULT '0.00';`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "team_lead_id" integer;`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "project_manager_id" integer;`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "date_of_joining" varchar(100);`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "allocated_hours" numeric(6, 2) DEFAULT '0.00';`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "prev_allocated_hours" numeric(6, 2) DEFAULT '0.00';`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "is_deleted" boolean DEFAULT false;`);
+      
+      // Projects alterations
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "comments" text;`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "budget_table" jsonb;`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "milestones" jsonb;`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "total_hours" numeric(10, 2) DEFAULT '0.00';`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "buffer_hours" numeric(10, 2) DEFAULT '0.00';`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "assigned_pm_id" integer;`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "kanban_columns" jsonb;`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "project_category" varchar(255);`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "assigned_employee_ids" jsonb;`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "employee_allocated_hours" jsonb;`);
       await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "cost_calculation_type" varchar(50) DEFAULT 'custom';`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "is_deleted" boolean DEFAULT false;`);
+
+      // Tickets alterations
+      await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;`);
+      await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
+
       console.log('✅ Manual database alterations completed successfully!');
     } catch (alterError) {
       console.warn('⚠️ Manual database alterations failed:', alterError);
