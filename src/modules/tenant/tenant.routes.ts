@@ -6,7 +6,8 @@ import { checkRole } from '../../middleware/role.middleware.js';
 const router = Router();
 
 router.get('/resolve', tenantController.resolve); // Public
-router.get('/my', authenticate, checkRole(['TenantAdmin']), tenantController.getMy); // TenantAdmin own subscription
+router.get('/my', authenticate, checkRole(['TenantAdmin', 'Accounts', 'Sales', 'ProjectManager']), tenantController.getMy); // Tenant details
+router.put('/standard-cost', authenticate, checkRole(['TenantAdmin', 'Accounts']), tenantController.updateStandardCost); // Update standard cost
 
 // Protected (SuperAdmin only)
 router.get('/', authenticate, checkRole(['SuperAdmin']), tenantController.list);

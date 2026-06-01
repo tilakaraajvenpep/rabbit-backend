@@ -79,9 +79,9 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
   if (!text || text.trim().length === 0) {
     return {
       budgetTable: getFallbackBudget(),
-      milestones: getFallbackMilestones(),
+      milestones: [],
       totalHours: 600,
-      bufferHours: 90,
+      bufferHours: 60,
       estimatedCompletionDate: "2026-09-15T00:00:00.000Z"
     };
   }
@@ -97,57 +97,6 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
   let currentDescription = '';
   let currentHours: number | null = null;
   let currentCost: number | null = null;
-
-  // ── Block-based milestone extraction (runs on full text) ─────────────────
-  // Find the milestones section header (flexible match)
-  const milestoneSectionMatch = text.match(/delivery[^\n]*milestone|milestone[^\n]*schedule|funding milestone/i);
-  if (milestoneSectionMatch) {
-    const sectionText = text.substring(milestoneSectionMatch.index!);
-    // Split on every "Milestone N:" or "Milestone N " heading
-    const blocks = sectionText.split(/(?=Milestone\s*\d+[:\s])/i);
-    for (let i = 1; i < blocks.length; i++) {
-      const rawBlock = blocks[i];
-      // Remove 'Total Financed' and later to avoid polluting last block
-      const cleanBlock = rawBlock.split(/total financed|total\s+project/i)[0];
-      // Collapse newlines for easier matching
-      const flat = cleanBlock.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean).join(' ');
-
-      // Extract title: everything before the date
-      const dateMatch = flat.match(/([A-Za-z]{3,10}(?:uary|ruary|rch|ril|ne|ly|ust|tember|ober|vember|cember)?\s+\d{1,2},?\s*\d{4})/i);
-      // Extract amount: first currency amount
-      const amountMatch = flat.match(/[\$₹£€]\s*([\d,]+(?:\.\d+)?)/);
-
-      if (dateMatch && amountMatch) {
-        const dateStr = dateMatch[1].replace(/,/g, '');
-        const amount = parseFloat(amountMatch[1].replace(/,/g, '')) || 0;
-
-        // Title = text before the date, cleaned
-        const titleRaw = flat.substring(0, dateMatch.index).trim();
-        // Description = text after the amount value
-        const amtEnd = flat.indexOf(amountMatch[0]) + amountMatch[0].length;
-        const descRaw = flat.substring(amtEnd).trim();
-
-        let parsedDate: string | null = null;
-        try {
-          const d = new Date(dateStr);
-          if (!isNaN(d.getTime())) parsedDate = d.toISOString();
-        } catch { /* ignore */ }
-
-        const hrsRegex = /(\d+)\s*(?:hrs|hours|hour|h\b)/i;
-        const hrsMatch = cleanBlock.match(hrsRegex);
-        const hours = hrsMatch ? Number(hrsMatch[1]) : undefined;
-
-        milestones.push({
-          key: milestoneKey++,
-          title: titleRaw,
-          date: parsedDate,
-          amount,
-          description: descRaw || titleRaw,
-          hours
-        });
-      }
-    }
-  }
   // ─────────────────────────────────────────────────────────────────────────
 
   for (const line of lines) {
@@ -339,22 +288,16 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
     totalBudget = budgetTable.reduce((sum, item) => sum + (item.cost || 0), 0);
   }
 
-  if (milestones.length === 0) {
-    milestones.push(...getFallbackMilestones());
-  }
+  // milestones not needed
+  const finalMilestones: any[] = [];
 
-  const bufferHours = Math.round(totalHours * 0.15);
+  const bufferHours = Math.round(totalHours * 0.10);
 
   let estimatedCompletionDate = "2026-09-15T00:00:00.000Z";
-  const validMilestoneDates = milestones.map(m => m.date).filter(Boolean);
-  if (validMilestoneDates.length > 0) {
-    const maxDate = new Date(Math.max(...validMilestoneDates.map((d: any) => new Date(d).getTime())));
-    estimatedCompletionDate = maxDate.toISOString();
-  }
 
   return {
     budgetTable,
-    milestones,
+    milestones: finalMilestones,
     totalHours,
     bufferHours,
     estimatedCompletionDate

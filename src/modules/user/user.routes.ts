@@ -34,6 +34,7 @@ router.get('/', authenticate, async (req: any, res) => {
     prevAllocatedHours: users.prevAllocatedHours,
     costPerHour: users.costPerHour,
     teamLeadId: users.teamLeadId,
+    projectManagerId: users.projectManagerId,
     dateOfJoining: users.dateOfJoining,
     createdAt: users.createdAt
   })
@@ -84,7 +85,7 @@ router.post('/', authenticate, async (req: any, res, next) => {
       return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, Accounts, HR or SuperAdmin can create users' });
     }
 
-    const { fullName, email, password, role, costPerHour, teamLeadId, tenantId: bodyTenantId } = req.body;
+    const { fullName, email, password, role, costPerHour, teamLeadId, projectManagerId, tenantId: bodyTenantId } = req.body;
 
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ success: false, message: 'fullName, email, password and role are required' });
@@ -113,6 +114,7 @@ router.post('/', authenticate, async (req: any, res, next) => {
       role,
       costPerHour: costPerHour ? String(costPerHour) : '0.00',
       teamLeadId: teamLeadId ? parseInt(String(teamLeadId)) : null,
+      projectManagerId: projectManagerId ? parseInt(String(projectManagerId)) : null,
       isActive: true,
       isDeleted: false,
       allocatedHours: '0.00',
@@ -263,6 +265,36 @@ router.put('/:id/team-lead', authenticate, async (req: any, res, next) => {
     if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
 
     return success(res, updatedUser, 'Team Lead updated');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/project-manager', authenticate, async (req: any, res, next) => {
+  try {
+    const { id } = req.params;
+    const { projectManagerId } = req.body;
+    const { tenantId, role: userRole } = req.user;
+
+    if (userRole !== 'TenantAdmin' && userRole !== 'SuperAdmin' && userRole !== 'ProjectManager' && userRole !== 'HR' && userRole !== 'Accounts') {
+      return res.status(403).json({ success: false, message: 'Only TenantAdmin, ProjectManager, Accounts, HR or SuperAdmin can update project manager' });
+    }
+
+    let whereClause = eq(users.userId, parseInt(id));
+    if (userRole !== 'SuperAdmin') {
+      whereClause = and(whereClause, eq(users.tenantId, tenantId)) as any;
+    }
+
+    const pmId = projectManagerId ? parseInt(String(projectManagerId)) : null;
+
+    const [updatedUser] = await db.update(users)
+      .set({ projectManagerId: pmId, updatedAt: new Date() })
+      .where(whereClause)
+      .returning();
+
+    if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
+
+    return success(res, updatedUser, 'Project Manager updated');
   } catch (err) {
     next(err);
   }

@@ -13,6 +13,7 @@ export const users = pgTable('users', {
   prevAllocatedHours: decimal('prev_allocated_hours', { precision: 6, scale: 2 }).default('0.00'),
   costPerHour: decimal('cost_per_hour', { precision: 10, scale: 2 }).default('0.00'),
   teamLeadId: integer('team_lead_id'),
+  projectManagerId: integer('project_manager_id'),
   lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

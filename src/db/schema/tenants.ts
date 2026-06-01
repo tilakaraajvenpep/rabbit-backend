@@ -10,6 +10,7 @@ export const tenants = pgTable('tenants', {
   maxProjects: integer('max_projects').default(3),
   storageQuotaGb: decimal('storage_quota_gb').default('1'),
   customDomain: varchar('custom_domain', { length: 300 }),
+  standardCost: decimal('standard_cost', { precision: 10, scale: 2 }).default('500.00'),
   subscriptionExpiry: timestamp('subscription_expiry'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

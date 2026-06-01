@@ -26,4 +26,5 @@ export const updateProjectStatusSchema = z.object({
   kanbanColumns: z.any().optional(),
   assignedEmployeeIds: z.any().optional(),
   employeeAllocatedHours: z.any().optional(),
+  costCalculationType: z.string().optional().nullable(),
 });

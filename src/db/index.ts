@@ -38,8 +38,12 @@ export async function connectDB() {
 
     // Run programmatic migrations
     console.log('🔄 Running database migrations...');
-    await migrate(db, { migrationsFolder: path.join(process.cwd(), 'drizzle') });
-    console.log('✅ Database migrations applied successfully!');
+    try {
+      await migrate(db, { migrationsFolder: path.join(process.cwd(), 'drizzle') });
+      console.log('✅ Database migrations applied successfully!');
+    } catch (migError) {
+      console.warn('⚠️ Drizzle migrations failed (ignored to continue startup):', migError);
+    }
 
     // Run idempotent database seeding
     console.log('🌱 Checking & applying database seeding...');

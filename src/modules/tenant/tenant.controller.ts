@@ -76,3 +76,17 @@ export const getMy = async (req: Request, res: Response, next: NextFunction) => 
     next(err);
   }
 };
+
+export const updateStandardCost = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const { standardCost } = req.body;
+    if (standardCost === undefined || standardCost === null || isNaN(Number(standardCost)) || Number(standardCost) < 0) {
+      throw new Error('Valid standardCost is required');
+    }
+    const tenant = await TenantService.updateTenant(user.tenantId, { standardCost: String(standardCost) });
+    return success(res, tenant, 'Standard cost updated');
+  } catch (err) {
+    next(err);
+  }
+};

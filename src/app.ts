@@ -119,11 +119,16 @@ app.post('/health/migrate-run', async (req, res) => {
     await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "buffer_hours" numeric(10, 2) DEFAULT '0.00';`);
     await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "assigned_pm_id" integer;`);
     await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "kanban_columns" jsonb;`);
+    await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "cost_calculation_type" varchar(50) DEFAULT 'custom';`);
     
     // Users
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "cost_per_hour" numeric(10, 2) DEFAULT '0.00';`);
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "team_lead_id" integer;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "project_manager_id" integer;`);
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "date_of_joining" varchar(100);`);
+
+    // Tenants
+    await db.execute(sql`ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "standard_cost" numeric(10, 2) DEFAULT '500.00';`);
 
     // Create notifications table if not exists
     await db.execute(sql`
