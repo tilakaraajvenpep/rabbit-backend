@@ -1,0 +1,1 @@
+ALTER TABLE "tickets" ADD COLUMN "approved_for_done" boolean DEFAULT false;
