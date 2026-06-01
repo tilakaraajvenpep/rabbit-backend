@@ -27,4 +27,5 @@ export const updateProjectStatusSchema = z.object({
   assignedEmployeeIds: z.any().optional(),
   employeeAllocatedHours: z.any().optional(),
   costCalculationType: z.string().optional().nullable(),
+  billingType: z.string().optional().nullable(),
 });

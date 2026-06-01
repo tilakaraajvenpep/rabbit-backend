@@ -73,6 +73,7 @@ export async function connectDB() {
       await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "assigned_employee_ids" jsonb;`);
       await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "employee_allocated_hours" jsonb;`);
       await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "cost_calculation_type" varchar(50) DEFAULT 'custom';`);
+      await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "billing_type" varchar(50) DEFAULT 'fixed';`);
       await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "is_deleted" boolean DEFAULT false;`);
 
       // Tickets alterations

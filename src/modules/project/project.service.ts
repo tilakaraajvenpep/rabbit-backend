@@ -198,13 +198,17 @@ export class ProjectService {
     kanbanColumns?: any,
     assignedEmployeeIds?: any,
     employeeAllocatedHours?: any,
-    costCalculationType?: string
+    costCalculationType?: string,
+    billingType?: string
   ) {
     const oldProject = await this.getProjectById(projectId, tenantId);
     
     const updateData: any = { status, updatedAt: new Date() };
     if (costCalculationType !== undefined) {
       updateData.costCalculationType = costCalculationType;
+    }
+    if (billingType !== undefined) {
+      updateData.billingType = billingType;
     }
     if (assignedEmployeeIds !== undefined) {
       updateData.assignedEmployeeIds = assignedEmployeeIds;

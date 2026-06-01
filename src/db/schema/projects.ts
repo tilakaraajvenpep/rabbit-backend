@@ -30,6 +30,7 @@ export const projects = pgTable('projects', {
   assignedEmployeeIds: jsonb('assigned_employee_ids'),
   employeeAllocatedHours: jsonb('employee_allocated_hours'),
   costCalculationType: varchar('cost_calculation_type', { length: 50 }).default('custom'),
+  billingType: varchar('billing_type', { length: 50 }).default('fixed'),
 },
 (table) => ({
   tenantIdx: index('projects_tenant_idx').on(table.tenantId),

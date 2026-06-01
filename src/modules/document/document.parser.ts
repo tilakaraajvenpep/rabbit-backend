@@ -1,4 +1,4 @@
-export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
+export function parseScopeDocumentText(text: string, projectStartDate?: Date, isSingleDoc?: boolean) {
   const getFallbackBudget = () => [
     {
       key: 1,
@@ -84,6 +84,77 @@ export function parseScopeDocumentText(text: string, projectStartDate?: Date) {
       bufferHours: 60,
       estimatedCompletionDate: "2026-09-15T00:00:00.000Z"
     };
+  }
+
+  if (isSingleDoc) {
+    let extractedTotalBudget: number | null = null;
+    let extractedTotalHours: number | null = null;
+
+    const budgetRegexes = [
+      /total\s*budget[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /project\s*budget[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /total\s*cost[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /project\s*value[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /commercials?[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /contract\s*value[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /price[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /budget\s*amount[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /approved\s*budget[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i,
+      /budget[:\-\s]*[\$₹£€]?\s*([\d,]+(?:\.\d+)?)/i
+    ];
+
+    for (const regex of budgetRegexes) {
+      const match = text.match(regex);
+      if (match) {
+        const parsedVal = parseFloat(match[1].replace(/,/g, ''));
+        if (!isNaN(parsedVal) && parsedVal > 0) {
+          extractedTotalBudget = parsedVal;
+          break;
+        }
+      }
+    }
+
+    const hoursRegexes = [
+      /total\s*hours[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /total\s*effort[:\-\s]*([\d,]+(?:\.\d+)?)\s*(?:hours|hrs|hour|hr)/i,
+      /estimated\s*hours[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /allocated\s*hours[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /approved\s*hours[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /project\s*hours[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /effort\s*\(hours\)[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /hours\s*allocated[:\-\s]*([\d,]+(?:\.\d+)?)/i,
+      /hours[:\-\s]*([\d,]+(?:\.\d+)?)/i
+    ];
+
+    for (const regex of hoursRegexes) {
+      const match = text.match(regex);
+      if (match) {
+        const parsedVal = parseFloat(match[1].replace(/,/g, ''));
+        if (!isNaN(parsedVal) && parsedVal > 0) {
+          extractedTotalHours = parsedVal;
+          break;
+        }
+      }
+    }
+
+    if (extractedTotalBudget !== null || extractedTotalHours !== null) {
+      const budget = extractedTotalBudget || 1500000;
+      const hours = extractedTotalHours || 600;
+      return {
+        budgetTable: [
+          {
+            key: 1,
+            item: "Total Project Budget Allocation",
+            cost: budget,
+            hours: hours
+          }
+        ],
+        milestones: [],
+        totalHours: hours,
+        bufferHours: Math.round(hours * 0.10),
+        estimatedCompletionDate: "2026-09-15T00:00:00.000Z"
+      };
+    }
   }
 
   const budgetTable: any[] = [];

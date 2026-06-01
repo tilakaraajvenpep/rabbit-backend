@@ -192,6 +192,10 @@ export class DocumentService {
       }
     }
 
-    return parseScopeDocumentText(textContent, project?.startDate || undefined);
+    // Check if sales has uploaded only one document for this project
+    const docCountRes = await db.execute(sql`SELECT count(*) FROM "scope_documents" WHERE "project_id" = ${doc.projectId}`);
+    const isSingleDoc = Number(docCountRes[0]?.count || 0) === 1;
+
+    return parseScopeDocumentText(textContent, project?.startDate || undefined, isSingleDoc);
   }
 }
