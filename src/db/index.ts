@@ -81,6 +81,20 @@ export async function connectDB() {
       await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
       await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "assigned_employees" jsonb;`);
 
+      // Ticket templates table creation
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS "ticket_templates" (
+          "template_id" serial PRIMARY KEY,
+          "tenant_id" integer NOT NULL,
+          "template_name" varchar(255) NOT NULL,
+          "department" varchar(255),
+          "project_name" varchar(255),
+          "tickets" jsonb NOT NULL,
+          "created_at" timestamp DEFAULT now(),
+          "updated_at" timestamp DEFAULT now()
+        );
+      `);
+
       console.log('✅ Manual database alterations completed successfully!');
     } catch (alterError) {
       console.warn('⚠️ Manual database alterations failed:', alterError);

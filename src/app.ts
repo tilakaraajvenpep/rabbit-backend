@@ -19,6 +19,8 @@ import leaveRoutes from './modules/leave/leave.routes.js';
 import notificationRoutes from './modules/notification/notification.routes.js';
 import timerRequestRoutes from './modules/timerRequest/timerRequest.routes.js';
 import reportAccessRoutes from './modules/reportAccess/reportAccess.routes.js';
+import ticketTemplateRoutes from './modules/ticketTemplate/ticketTemplate.routes.js';
+
 
 
 
@@ -196,6 +198,8 @@ app.use('/api/leaves', leaveRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/timer-requests', timerRequestRoutes);
 app.use('/api/report-access', reportAccessRoutes);
+app.use('/api/ticket-templates', ticketTemplateRoutes);
+
 
 
 

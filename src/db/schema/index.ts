@@ -11,5 +11,7 @@ export * from './leaves.js';
 export * from './notifications.js';
 export * from './timerRequests.js';
 export * from './reportAccessRequests.js';
+export * from './ticketTemplates.js';
+
 
 
