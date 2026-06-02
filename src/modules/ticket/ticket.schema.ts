@@ -10,7 +10,7 @@ export const createTicketSchema = z.object({
     }
     return val;
   }),
-  estimatedHours: z.coerce.number().positive(),
+  estimatedHours: z.coerce.number().nonnegative(),
   dueDate: z.string().optional().nullable(),
   milestone: z.string().max(200).optional().nullable(),
   assignedEmployees: z.any().optional(),
