@@ -10,7 +10,7 @@ router.use(authenticate);
 router.post('/daily', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.submitReport);
 router.get('/daily/me', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getMyReports);
 router.get('/daily/me/range', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getMyReportsRange);
-router.get('/daily/all/range', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getAllReportsRange);
+router.get('/daily/all/range', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'TenantAdmin', 'HR']), reportController.getAllReportsRange);
 router.get('/daily/today', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin']), reportController.getTodayReports);
 
 export default router;
