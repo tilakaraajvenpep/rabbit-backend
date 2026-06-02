@@ -15,6 +15,7 @@ export const tickets = pgTable('tickets', {
   assignedToUserId: integer('assigned_to_user_id').references(() => users.userId),
   assignedEmployees: jsonb('assigned_employees'),
   estimatedHours: decimal('estimated_hours', { precision: 10, scale: 2 }).default('0.00'),
+  startDate: timestamp('start_date'),
   dueDate: timestamp('due_date'),
   milestone: varchar('milestone', { length: 200 }),
   progressState: varchar('progress_state', { length: 50 }).default('InProgress'),

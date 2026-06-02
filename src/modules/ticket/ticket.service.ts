@@ -45,6 +45,7 @@ export class TicketService {
       tenantId,
       status: 'ToDo',
       estimatedHours: String(insertData.estimatedHours),
+      startDate: insertData.startDate ? new Date(insertData.startDate) : null,
       dueDate: insertData.dueDate ? new Date(insertData.dueDate) : null,
       milestone: insertData.milestone || null,
     }).returning();
@@ -317,6 +318,7 @@ export class TicketService {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.priority !== undefined) updateData.priority = data.priority;
     if (data.estimatedHours !== undefined) updateData.estimatedHours = String(data.estimatedHours);
+    if (data.startDate !== undefined) updateData.startDate = data.startDate ? new Date(data.startDate) : null;
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     if (data.assignedToUserId !== undefined) updateData.assignedToUserId = data.assignedToUserId;
     if (data.approvedForDone !== undefined) updateData.approvedForDone = data.approvedForDone;
