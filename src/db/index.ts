@@ -77,6 +77,7 @@ export async function connectDB() {
       await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "is_deleted" boolean DEFAULT false;`);
 
       // Tickets alterations
+      await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "start_date" timestamp;`);
       await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;`);
       await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
       await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "assigned_employees" jsonb;`);
