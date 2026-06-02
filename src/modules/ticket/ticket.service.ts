@@ -182,7 +182,26 @@ export class TicketService {
       throw new Error(`Invalid status: ${status}`);
     }
 
+    if (status === 'InProgress') {
+      if (!oldTicket.startDate || !oldTicket.dueDate) {
+        throw new Error('A ticket must have both a Start Date and a Due Date to be moved to In Progress.');
+      }
+      const today = new Date();
+      const start = new Date(oldTicket.startDate);
+      start.setHours(0, 0, 0, 0);
+      const due = new Date(oldTicket.dueDate);
+      due.setHours(23, 59, 59, 999);
+
+      if (today < start || today > due) {
+        throw new Error('You can move a ticket to In Progress only between its Start Date and Due Date.');
+      }
+    }
+
     const updateData: any = { status, updatedAt: new Date() };
+
+    if (status === 'InProgress' && oldTicket.status === 'ToDo') {
+      updateData.inProgressDate = new Date();
+    }
 
     // Transition logic for Kanban Timer
     if (status === 'InProgress' && oldTicket.status !== 'InProgress') {

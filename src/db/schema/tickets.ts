@@ -17,6 +17,7 @@ export const tickets = pgTable('tickets', {
   estimatedHours: decimal('estimated_hours', { precision: 10, scale: 2 }).default('0.00'),
   startDate: timestamp('start_date'),
   dueDate: timestamp('due_date'),
+  inProgressDate: timestamp('in_progress_date'),
   milestone: varchar('milestone', { length: 200 }),
   progressState: varchar('progress_state', { length: 50 }).default('InProgress'),
   statusNotes: text('status_notes'),
