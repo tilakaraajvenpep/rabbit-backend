@@ -242,7 +242,11 @@ export class TimerRequestService {
     });
 
     if (approved) {
-      if (userWhoResponded?.role === 'TeamLead' || userWhoResponded?.role === 'ProjectManager') {
+      if (userWhoResponded?.role === 'TeamLead') {
+        throw new Error('Team Leads cannot approve additional hours requests. They can only forward to Project Manager or reject.');
+      }
+
+      if (userWhoResponded?.role === 'ProjectManager' || userWhoResponded?.role === 'TenantAdmin') {
         const ticket = await db.query.tickets.findFirst({
           where: eq(tickets.ticketId, old.ticketId),
         });
@@ -256,11 +260,7 @@ export class TimerRequestService {
         const reqHours = Number(old.requestedHours || 0);
         const availableBuffer = Number(proj.bufferHours || 0);
 
-        if (userWhoResponded?.role === 'TeamLead' && availableBuffer < reqHours) {
-          throw new Error(`Insufficient project buffer hours. You must forward this request to the Project Manager.`);
-        }
-
-        if (userWhoResponded?.role === 'ProjectManager' && availableBuffer < reqHours) {
+        if (availableBuffer < reqHours) {
           throw new Error(`Insufficient project buffer hours (${availableBuffer}h available, requested ${reqHours}h). Please forward this request to Accounts instead.`);
         }
 
@@ -338,8 +338,8 @@ export class TimerRequestService {
           title: `Accounts Approved Extra Hours — Please Update Time for ${employee?.fullName}`,
           message: `Accounts approved ${request.requestedHours}h extra for "${employee?.fullName}". Please update their allocated hours so they can submit EOD.`,
           type: 'alert',
-        });
-      }
+          });
+        }
       // Notify employee
       await NotificationService.createNotification({
         tenantId,
@@ -375,7 +375,7 @@ export class TimerRequestService {
       .leftJoin(users, eq(timerRequests.userId, users.userId))
       .leftJoin(tickets, eq(timerRequests.ticketId, tickets.ticketId))
       .leftJoin(projects, eq(tickets.projectId, projects.projectId))
-      .where(and(eq(timerRequests.tenantId, tenantId), eq(timerRequests.status, 'AccountsApproved')))
+      .where(and(eq(timerRequests.tenantId, tenantId), inArray(timerRequests.status, ['AccountsApproved', 'Approved'])))
       .orderBy(sql`${timerRequests.createdAt} DESC`);
   }
 
