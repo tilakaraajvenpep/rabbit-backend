@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, boolean, timestamp, index, decimal } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, boolean, timestamp, index, decimal, jsonb } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants.js';
 import { projects } from './projects.js';
 import { users } from './users.js';
@@ -13,6 +13,7 @@ export const tickets = pgTable('tickets', {
   status: varchar('status', { length: 50 }).default('ToDo'),
   priority: varchar('priority', { length: 50 }).default('Medium'),
   assignedToUserId: integer('assigned_to_user_id').references(() => users.userId),
+  assignedEmployees: jsonb('assigned_employees'),
   estimatedHours: decimal('estimated_hours', { precision: 10, scale: 2 }).default('0.00'),
   dueDate: timestamp('due_date'),
   milestone: varchar('milestone', { length: 200 }),

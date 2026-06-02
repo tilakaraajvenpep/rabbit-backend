@@ -27,15 +27,26 @@ export class TicketService {
     //   throw new Error('Total ticket hours exceed project approved hours');
     // }
 
+    const insertData = { ...data };
+    if (insertData.assignedEmployees && Array.isArray(insertData.assignedEmployees) && insertData.assignedEmployees.length > 0) {
+      if (!insertData.assignedToUserId) {
+        insertData.assignedToUserId = Number(insertData.assignedEmployees[0].userId);
+      }
+      const sumHours = insertData.assignedEmployees.reduce((sum: number, emp: any) => sum + (Number(emp.hours) || 0), 0);
+      if (sumHours > 0) {
+        insertData.estimatedHours = sumHours;
+      }
+    }
+
     const [ticket] = await db.insert(tickets).values({
-      ...data,
+      ...insertData,
       ticketCode,
       projectId,
       tenantId,
       status: 'ToDo',
-      estimatedHours: String(data.estimatedHours),
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      milestone: data.milestone || null,
+      estimatedHours: String(insertData.estimatedHours),
+      dueDate: insertData.dueDate ? new Date(insertData.dueDate) : null,
+      milestone: insertData.milestone || null,
     }).returning();
 
     // Audit Log
@@ -309,6 +320,19 @@ export class TicketService {
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     if (data.assignedToUserId !== undefined) updateData.assignedToUserId = data.assignedToUserId;
     if (data.approvedForDone !== undefined) updateData.approvedForDone = data.approvedForDone;
+    if (data.assignedEmployees !== undefined) {
+      updateData.assignedEmployees = data.assignedEmployees;
+      if (Array.isArray(data.assignedEmployees) && data.assignedEmployees.length > 0) {
+        updateData.assignedToUserId = Number(data.assignedEmployees[0].userId);
+        const sumHours = data.assignedEmployees.reduce((sum: number, emp: any) => sum + (Number(emp.hours) || 0), 0);
+        if (sumHours > 0) {
+          updateData.estimatedHours = String(sumHours);
+        }
+      } else if (Array.isArray(data.assignedEmployees) && data.assignedEmployees.length === 0) {
+        updateData.assignedToUserId = null;
+        updateData.estimatedHours = '0.00';
+      }
+    }
 
     const [ticket] = await db.update(tickets)
       .set(updateData)

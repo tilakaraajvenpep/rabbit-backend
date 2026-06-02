@@ -125,10 +125,10 @@ export const updateTicket = async (req: Request, res: Response, next: NextFuncti
   try {
     const user = (req as any).user;
     const id = parseInt(req.params.id);
-    const { title, description, priority, estimatedHours, dueDate, assignedToUserId, approvedForDone } = req.body;
+    const { title, description, priority, estimatedHours, dueDate, assignedToUserId, approvedForDone, assignedEmployees } = req.body;
 
     const ticket = await TicketService.updateTicket(id, user.tenantId, user.userId, {
-      title, description, priority, estimatedHours, dueDate, assignedToUserId, approvedForDone
+      title, description, priority, estimatedHours, dueDate, assignedToUserId, approvedForDone, assignedEmployees
     });
     return success(res, ticket, 'Ticket updated');
   } catch (err) {
