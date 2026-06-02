@@ -161,14 +161,14 @@ export class TicketService {
       }
     }
 
-    // Restrict moving ticket from Done to InProgress for Employees & TeamLeads unless approved by PM
-    if (oldTicket.status === 'Done' && status === 'InProgress') {
+    // Restrict moving ticket from Done to any other status for Employees & TeamLeads unless approved by PM
+    if (oldTicket.status === 'Done' && status !== 'Done') {
       const userObj = await db.query.users.findFirst({
         where: eq(users.userId, userId)
       });
       if (userObj && (userObj.role === 'Employee' || userObj.role === 'TeamLead')) {
         if (!oldTicket.approvedForInProgress) {
-          throw new Error('Approval from Project Manager is required to move this ticket back to In Progress.');
+          throw new Error('Approval from Project Manager is required to move this ticket out of the Done stage.');
         }
       }
     }
