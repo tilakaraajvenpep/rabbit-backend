@@ -7,11 +7,11 @@ const router = Router();
 
 router.use(authenticate);
 
-// Employee routes
-router.post('/', checkRole(['Employee']), leaveController.applyLeave);
-router.get('/me', checkRole(['Employee']), leaveController.getMyLeaves);
-router.put('/:id', checkRole(['Employee']), leaveController.updateLeave);
-router.delete('/:id', checkRole(['Employee']), leaveController.deleteLeave);
+// Personal leave routes
+router.post('/', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'HR', 'Accounts', 'Sales']), leaveController.applyLeave);
+router.get('/me', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'HR', 'Accounts', 'Sales']), leaveController.getMyLeaves);
+router.put('/:id', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'HR', 'Accounts', 'Sales']), leaveController.updateLeave);
+router.delete('/:id', checkRole(['Employee', 'TeamLead', 'ProjectManager', 'HR', 'Accounts', 'Sales']), leaveController.deleteLeave);
 
 // PM / TL / Accounts routes
 router.get('/pending', checkRole(['TeamLead', 'ProjectManager', 'TenantAdmin', 'Accounts']), leaveController.getPendingLeaves);
