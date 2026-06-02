@@ -27,6 +27,7 @@ export const tickets = pgTable('tickets', {
   updatedAt: timestamp('updated_at').defaultNow(),
   isDeleted: boolean('is_deleted').default(false),
   approvedForDone: boolean('approved_for_done').default(false),
+  approvedForInProgress: boolean('approved_for_in_progress').default(false),
 
 },
 (table) => ({

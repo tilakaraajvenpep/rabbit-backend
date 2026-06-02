@@ -161,6 +161,18 @@ export class TicketService {
       }
     }
 
+    // Restrict moving ticket from Done to InProgress for Employees & TeamLeads unless approved by PM
+    if (oldTicket.status === 'Done' && status === 'InProgress') {
+      const userObj = await db.query.users.findFirst({
+        where: eq(users.userId, userId)
+      });
+      if (userObj && (userObj.role === 'Employee' || userObj.role === 'TeamLead')) {
+        if (!oldTicket.approvedForInProgress) {
+          throw new Error('Approval from Project Manager is required to move this ticket back to In Progress.');
+        }
+      }
+    }
+
     // Allow any valid status value - dynamic check based on project configured Kanban columns
     let validStatuses = ['ToDo', 'InProgress', 'InReview', 'Done'];
     if (oldTicket.projectId) {
@@ -185,6 +197,10 @@ export class TicketService {
 
 
     const updateData: any = { status, updatedAt: new Date() };
+
+    if (oldTicket.status === 'Done' && status === 'InProgress') {
+      updateData.approvedForInProgress = false;
+    }
 
     if (status === 'InProgress' && oldTicket.status === 'ToDo') {
       updateData.inProgressDate = new Date();
@@ -328,6 +344,7 @@ export class TicketService {
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     if (data.assignedToUserId !== undefined) updateData.assignedToUserId = data.assignedToUserId;
     if (data.approvedForDone !== undefined) updateData.approvedForDone = data.approvedForDone;
+    if (data.approvedForInProgress !== undefined) updateData.approvedForInProgress = data.approvedForInProgress;
     if (data.assignedEmployees !== undefined) {
       updateData.assignedEmployees = data.assignedEmployees;
       if (Array.isArray(data.assignedEmployees) && data.assignedEmployees.length > 0) {
