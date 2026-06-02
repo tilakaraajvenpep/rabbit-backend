@@ -19,7 +19,13 @@ export class TimerRequestService {
 
     const employee = await db.query.users.findFirst({ where: eq(users.userId, userId) });
 
-    // All roles start at PendingTL — chain: TL → PM → Accounts → HR/PM reassigns quota
+    let status = 'PendingTL';
+    if (employee?.role === 'TeamLead') {
+      status = 'PendingPM';
+    } else if (employee?.role === 'ProjectManager' || employee?.role === 'TenantAdmin') {
+      status = 'PendingAccounts';
+    }
+
     const [request] = await db.insert(timerRequests).values({
       tenantId,
       userId,
@@ -27,22 +33,37 @@ export class TimerRequestService {
       requestType,
       requestedHours: requestedHours ? String(requestedHours) : '0.00',
       reason,
-      status: 'PendingTL',
+      status,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
 
-    // Notify TL (or all PMs if no TL assigned)
-    const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
-    if (activeTeamLeadId) {
-      await NotificationService.createNotification({
-        tenantId,
-        userId: activeTeamLeadId,
-        title: `Additional Hours Request: ${employee?.fullName || 'Employee'}`,
-        message: `"${employee?.fullName || 'Employee'}" needs additional hours for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
-        type: 'alert',
-      });
-    } else {
+    // Notify the next level of approval
+    if (status === 'PendingTL') {
+      const activeTeamLeadId = teamLeadId ? Number(teamLeadId) : employee?.teamLeadId;
+      if (activeTeamLeadId) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: activeTeamLeadId,
+          title: `Additional Hours Request: ${employee?.fullName || 'Employee'}`,
+          message: `"${employee?.fullName || 'Employee'}" needs additional hours for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+          type: 'alert',
+        });
+      } else {
+        const pms = await db.query.users.findMany({
+          where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')),
+        });
+        for (const pm of pms) {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: pm.userId,
+            title: `Additional Hours Request: ${employee?.fullName || 'Employee'}`,
+            message: `"${employee?.fullName || 'Employee'}" needs additional hours for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+            type: 'alert',
+          });
+        }
+      }
+    } else if (status === 'PendingPM') {
       const pms = await db.query.users.findMany({
         where: and(eq(users.tenantId, tenantId), eq(users.role, 'ProjectManager')),
       });
@@ -50,8 +71,21 @@ export class TimerRequestService {
         await NotificationService.createNotification({
           tenantId,
           userId: pm.userId,
-          title: `Additional Hours Request: ${employee?.fullName || 'Employee'}`,
-          message: `"${employee?.fullName || 'Employee'}" needs additional hours for ticket "${ticket.title}" (${requestType}). Reason: ${reason}`,
+          title: `Additional Hours Request: ${employee?.fullName || 'Team Lead'}`,
+          message: `Team Lead "${employee?.fullName}" requested additional hours for ticket "${ticket.title}". Reason: ${reason}`,
+          type: 'alert',
+        });
+      }
+    } else if (status === 'PendingAccounts') {
+      const accountsUsers = await db.query.users.findMany({
+        where: and(eq(users.tenantId, tenantId), eq(users.role, 'Accounts')),
+      });
+      for (const acc of accountsUsers) {
+        await NotificationService.createNotification({
+          tenantId,
+          userId: acc.userId,
+          title: `Additional Hours Budget Approval Needed`,
+          message: `PM "${employee?.fullName}" requested additional hours for ticket "${ticket.title}". Please review.`,
           type: 'alert',
         });
       }
@@ -208,7 +242,7 @@ export class TimerRequestService {
     });
 
     if (approved) {
-      if (userWhoResponded?.role === 'TeamLead') {
+      if (userWhoResponded?.role === 'TeamLead' || userWhoResponded?.role === 'ProjectManager') {
         const ticket = await db.query.tickets.findFirst({
           where: eq(tickets.ticketId, old.ticketId),
         });
@@ -222,8 +256,12 @@ export class TimerRequestService {
         const reqHours = Number(old.requestedHours || 0);
         const availableBuffer = Number(proj.bufferHours || 0);
 
-        if (availableBuffer < reqHours) {
+        if (userWhoResponded?.role === 'TeamLead' && availableBuffer < reqHours) {
           throw new Error(`Insufficient project buffer hours. You must forward this request to the Project Manager.`);
+        }
+
+        if (userWhoResponded?.role === 'ProjectManager' && availableBuffer < reqHours) {
+          throw new Error(`Insufficient project buffer hours (${availableBuffer}h available, requested ${reqHours}h). Please forward this request to Accounts instead.`);
         }
 
         // Deduct approved hours from project's bufferHours
