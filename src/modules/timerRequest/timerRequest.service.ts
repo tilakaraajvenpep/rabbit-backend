@@ -143,6 +143,7 @@ export class TimerRequestService {
       ticketTitle: tickets.title,
       ticketCode: tickets.ticketCode,
       projectName: projects.projectName,
+      bufferHours: projects.bufferHours,
     })
       .from(timerRequests)
       .leftJoin(users, eq(timerRequests.userId, users.userId))
