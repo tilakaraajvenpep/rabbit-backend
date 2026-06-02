@@ -4,7 +4,8 @@ export const createTicketSchema = z.object({
   title: z.string().min(2),
   description: z.string().optional(),
   priority: z.preprocess((val) => val === 'Urgent' ? 'Critical' : val, z.enum(['Low', 'Medium', 'High', 'Critical']).default('Medium')),
-  assignedToUserId: z.union([z.number(), z.string()]).optional().transform(val => {
+  assignedToUserId: z.union([z.number(), z.string()]).optional().nullable().transform(val => {
+    if (val === null || val === undefined) return undefined;
     if (typeof val === 'string') {
       return val ? parseInt(val, 10) : undefined;
     }
