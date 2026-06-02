@@ -112,6 +112,8 @@ app.post('/health/migrate-run', async (req, res) => {
     // Tickets
     await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "due_date" timestamp;`);
     await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "milestone" varchar(200);`);
+    await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "approved_for_done" boolean DEFAULT false;`);
+    await db.execute(sql`ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "approved_for_in_progress" boolean DEFAULT false;`);
     
     // Projects
     await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "comments" text;`);
