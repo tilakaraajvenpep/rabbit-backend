@@ -8,5 +8,5 @@ export const dailyReportItemSchema = z.object({
 
 export const dailyReportSchema = z.object({
   reportDate: z.string(), // YYYY-MM-DD
-  items: z.array(dailyReportItemSchema).min(1),
+  items: z.array(dailyReportItemSchema),
 });

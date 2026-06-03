@@ -10,7 +10,7 @@ export class ReportService {
     const { reportDate, items } = data;
 
     // 1. Validate hours
-    if (!validateTotalHours(items)) {
+    if (items.length > 0 && !validateTotalHours(items)) {
       const err = new Error('Total hours must be greater than 0');
       (err as any).status = 400;
       throw err;
@@ -29,6 +29,20 @@ export class ReportService {
       });
 
       let report;
+      if (items.length === 0) {
+        if (existing) {
+          await tx.delete(dailyReportItems).where(eq(dailyReportItems.reportId, existing.reportId));
+          await tx.update(dailyReports)
+            .set({
+              isDeleted: true,
+              totalHours: '0.00',
+              updatedAt: new Date()
+            })
+            .where(eq(dailyReports.reportId, existing.reportId));
+        }
+        return { reportId: existing?.reportId, reportDate, items: [], totalHours: '0.00' };
+      }
+
       if (existing) {
         // Delete old items
         await tx.delete(dailyReportItems).where(eq(dailyReportItems.reportId, existing.reportId));
