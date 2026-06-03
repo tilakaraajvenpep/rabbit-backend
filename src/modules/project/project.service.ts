@@ -395,6 +395,26 @@ export class ProjectService {
           type: 'project'
         });
       }
+
+      // Notify Accounts if note contains requested extra hours
+      if (note && (note.includes('Accounts') || note.toLowerCase().includes('extra hours'))) {
+        const accountsUsers = await db.query.users.findMany({
+          where: and(
+            eq(users.tenantId, tenantId),
+            eq(users.role, 'Accounts'),
+            eq(users.isDeleted, false)
+          )
+        });
+        for (const acc of accountsUsers) {
+          await NotificationService.createNotification({
+            tenantId,
+            userId: acc.userId,
+            title: `Extra Hours Request: ${project.projectName}`,
+            message: `Team Lead has requested Accounts to allocate extra hours for project "${project.projectName}". Details: ${note}`,
+            type: 'project'
+          });
+        }
+      }
     } catch (notifErr) {
       console.error('Failed to create project update notifications:', notifErr);
     }
