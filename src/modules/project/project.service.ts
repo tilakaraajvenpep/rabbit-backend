@@ -227,7 +227,6 @@ export class ProjectService {
     }
     if (totalHours !== undefined) {
       updateData.totalHours = totalHours ? String(totalHours) : '0.00';
-      updateData.approvedHours = totalHours ? String(totalHours) : '0.00';
     }
     if (bufferHours !== undefined) {
       updateData.bufferHours = bufferHours ? String(bufferHours) : '0.00';
